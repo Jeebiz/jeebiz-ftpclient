@@ -1,10 +1,10 @@
 package com.github.vindell.ftpclient;
 
 /**
- * FTPHTTPClient客户端的配置
+ * FTPHttpClient客户端的配置
  * @author 		： <a href="https://github.com/vindell">vindell</a>
  */
-public class FTPHTTPClientConfig extends FTPClientConfig {
+public class FTPHttpClientConfig extends FTPClientConfig {
 
 	//===============================================================================
 	//=============FTPHTTPClient参数配置================================================

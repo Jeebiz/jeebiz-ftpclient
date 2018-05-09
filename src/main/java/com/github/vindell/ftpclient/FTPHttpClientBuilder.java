@@ -7,11 +7,11 @@ import com.github.vindell.ftpclient.utils.StringUtils;
  * FTPHTTPClient对象构建器
  * @author 		： <a href="https://github.com/vindell">vindell</a>
  */
-public class FTPHTTPClientBuilder extends FTPClientBuilder {
+public class FTPHttpClientBuilder extends FTPClientBuilder {
 	
-	private FTPHTTPClientConfig clientConfig;
+	private FTPHttpClientConfig clientConfig;
 	
-	public FTPHTTPClientBuilder(FTPHTTPClientConfig clientConfig) {
+	public FTPHttpClientBuilder(FTPHttpClientConfig clientConfig) {
 		super(clientConfig);
 		this.clientConfig = clientConfig;
 	}
@@ -30,7 +30,7 @@ public class FTPHTTPClientBuilder extends FTPClientBuilder {
 	}
 
 	@Override
-	public FTPHTTPClientConfig getClientConfig() {
+	public FTPHttpClientConfig getClientConfig() {
 		return clientConfig;
 	}
 	

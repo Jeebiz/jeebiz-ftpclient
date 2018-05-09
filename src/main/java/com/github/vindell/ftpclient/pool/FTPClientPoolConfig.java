@@ -12,8 +12,17 @@ public class FTPClientPoolConfig extends GenericObjectPoolConfig {
 	
 	protected static Logger LOG = LoggerFactory.getLogger(FTPClientPoolConfig.class);
 	
-	public FTPClientPoolConfig(){
-		
+	/**
+	 * If the FTPClient Pool should be enabled or not
+	 */
+	private boolean enabled = false;
+
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
 	}
 	
 }

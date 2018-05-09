@@ -11,6 +11,7 @@ import com.github.vindell.ftpclient.FTPClientBuilder;
 import com.github.vindell.ftpclient.FTPClientConfig;
 import com.github.vindell.ftpclient.metrics.FTPClientMetricsFactory;
 import com.github.vindell.ftpclient.utils.FTPConnectUtils;
+import com.github.vindell.ftpclient.utils.FTPPathUtils;
 
 /**
  * FTPClient 对象工厂
@@ -93,6 +94,12 @@ public class FTPPooledClientFactory extends BasePooledObjectFactory<FTPClient> {
     			//连接FTP服务器
             	boolean isConnected = FTPConnectUtils.connect(ftpClient, clientConfig.getHost(), clientConfig.getPort(), clientConfig.getUsername(), clientConfig.getPassword());
     			if(isConnected){
+    				
+    				// FTP服务根文件目录
+    				String rootDir = FTPPathUtils.getRootDir(clientConfig.getRootdir());
+    				// 切换目录至根目录
+    				ftpClient.changeWorkingDirectory(rootDir);
+    				
     				//初始化已经与FTP服务器建立连接的FTPClient
     				FTPConnectUtils.initConnectedSocket(ftpClient, clientConfig);
     				FTPConnectUtils.initConnectionMode(ftpClient, clientConfig);

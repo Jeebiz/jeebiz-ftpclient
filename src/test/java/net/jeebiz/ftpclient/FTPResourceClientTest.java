@@ -8,7 +8,15 @@ public class FTPResourceClientTest extends FTPClientTest {
 	
 	@Before
 	public void setUp() {
-		builder = new FTPClientBuilder(null);
+		
+		
+		FTPClientConfig clientConfig = new FTPClientConfig();
+		
+		
+		
+		
+		
+		builder = new FTPClientBuilder(clientConfig);
  		ftpClient = new FTPResourceClient(builder);
 	}
  	

@@ -2,12 +2,12 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.github.vindell</groupId>
-	<artifactId>ftpclient</artifactId>
+	<groupId>net.jeebiz</groupId>
+	<artifactId>jeebiz-ftpclient</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
 	<description>A ftpclient base on commons-net .</description>
 	<name>${project.groupId}:${project.artifactId}</name>
-	<url>https://github.com/vindell/${project.artifactId}</url>
+	<url>https://github.com/Jeebiz/${project.artifactId}</url>
 	<packaging>jar</packaging>
 
 	<licenses>
@@ -18,9 +18,9 @@
 	</licenses>
 
 	<scm>
-		<connection>scm:git:https:github.com/vindell/${project.artifactId}.git</connection>
-		<developerConnection>scm:git:https:github.com/vindell/${project.artifactId}.git</developerConnection>
-		<url>https:github.com/vindell/${project.artifactId}</url>
+		<connection>scm:git:https:github.com/Jeebiz/${project.artifactId}.git</connection>
+		<developerConnection>scm:git:https:github.com/Jeebiz/${project.artifactId}.git</developerConnection>
+		<url>https:github.com/Jeebiz/${project.artifactId}</url>
 		<tag>${project.artifactId}</tag>
 	</scm>
 

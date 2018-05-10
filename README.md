@@ -13,8 +13,8 @@ FTPClient扩展，实现连接的复用，减少FTP连接的消耗
 
 ``` xml
 <dependency>
-	<groupId>com.github.vindell</groupId>
-	<artifactId>ftpclient</artifactId>
+	<groupId>net.jeebiz</groupId>
+	<artifactId>jeebiz-ftpclient</artifactId>
 	<version>${project.version}</version>
 </dependency>
 ```

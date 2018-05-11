@@ -18,10 +18,10 @@ package net.jeebiz.ftpclient.enums;
 import org.apache.commons.net.ftp.FTP;
 
 /**
- * 文件类型：ascii,ebcdic,binary,local;默认 ascii
+ * 文件传输类型：ascii,ebcdic,binary,local;默认 ascii
  * @author ： <a href="https://github.com/vindell">vindell</a>
  */
-public enum FileTypeEnum {
+public enum FileTransferTypeEnum {
 
 	/***
 	 * A constant used to indicate the file(s) being transferred should be treated
@@ -53,7 +53,7 @@ public enum FileTypeEnum {
 
 	private String desc;
 
-	private FileTypeEnum(int type, String desc) {
+	private FileTransferTypeEnum(int type, String desc) {
 		this.type = type;
 		this.desc = desc;
 	}

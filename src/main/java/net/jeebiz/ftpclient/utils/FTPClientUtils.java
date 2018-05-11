@@ -14,8 +14,8 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.net.ssl.SSLSocketFactory;
-import javax.servlet.ServletResponse;
 
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.apache.commons.net.PrintCommandListener;
@@ -29,8 +29,10 @@ import net.jeebiz.ftpclient.FTPClient;
 import net.jeebiz.ftpclient.FTPClientConfig;
 import net.jeebiz.ftpclient.FTPSClient;
 import net.jeebiz.ftpclient.FTPSClientConfig;
+import net.jeebiz.ftpclient.filefilter.NameFileFilter;
 import net.jeebiz.ftpclient.io.CopyStreamProcessListener;
 import net.jeebiz.ftpclient.io.LoggerProtocolCommandListener;
+import net.jeebiz.ftpclient.rename.FileRenamePolicy;
 
 /**
  * FTPClient常用方法：
@@ -116,6 +118,18 @@ public class FTPClientUtils {
 			ftpClient.setDefaultPort(clientConfig.getPort());
 			//设置打开Socket连接超时时间
 			ftpClient.setDefaultTimeout(clientConfig.getConnectTimeout());
+			// 文件重命名规则：默认 {@link UUIDFileRenamePolicy}
+			if(StringUtils.isNotEmpty(clientConfig.getFileRenamePolicyName())){
+				@SuppressWarnings("unchecked")
+				Class<FileRenamePolicy> listenerClazz = (Class<FileRenamePolicy>) Class.forName(clientConfig.getFileRenamePolicyName());
+				FileRenamePolicy fileRenamePolicy = (FileRenamePolicy) ConstructorUtils.invokeConstructor(listenerClazz);
+				ftpClient.setFileRenamePolicy(fileRenamePolicy);
+				fileRenamePolicy.setClientConfig(clientConfig);
+			}else{
+				FileRenamePolicy fileRenamePolicy = clientConfig.getFileRenamePolicy();
+				fileRenamePolicy.setClientConfig(clientConfig);
+				ftpClient.setFileRenamePolicy(fileRenamePolicy);
+			}
 			/**
 			 * 您可以设置为true，如果你想获得隐藏的文件时listFiles(java.lang.String)了。
 			 * 一个LIST -a会发出到FTP服务器。 这取决于您的FTP服务器，如果你需要调用这个方法，也不要期望得到消除隐藏文件，如果你调用“假”这个方法。
@@ -220,97 +234,6 @@ public class FTPClientUtils {
 		return ftpsClient;
 	}
 	
-	/**
-	 * <p> 追加文件至FTP服务器： ftpClient.appendFile(remote, local) </p>
-	 * @param ftpClient		： FTPClient对象
-	 * @param ftpFileName	：文件名称
-	 * @param localFile		：文件
-	 * @return
-	 * @throws IOException
-	 */
-	public static boolean appendFile(FTPClient ftpClient, String ftpFileName, File localFile) throws IOException {
-		InputStream input = null;
-		try {
-			FTPFile ftpFile = FTPClientUtils.getFTPFile(ftpClient, ftpFileName);
-			// 异常检查
-			FTPExceptionUtils.assertPut(localFile, ftpFile, ftpFileName);
-			// 包装文件输入流
-			input = IOUtils.toBufferedInputStream(new FileInputStream(localFile), ftpClient.getBufferSize());
-			// 断点上传输入流
-			return FTPClientUtils.appendStream(ftpClient, ftpFileName, input, localFile.length() - ftpFile.getSize());
-		} finally {
-			// 恢复起始位
-			ftpClient.setRestartOffset(0);
-			// 关闭输入通道
-			IOUtils.closeQuietly(input);
-		}
-	}
-	
-	/**
-	 * 
-	 * <p> 追加文件至FTP服务器： ftpClient.appendFile(remote, local) </p>
-	 * @param ftpClient		： FTPClient对象
-	 * @param ftpFileName	：文件名称
-	 * @param localFile		：文件
-	 * @param skipOffset	：跳过已经存在的长度
-	 * @return
-	 * @throws IOException
-	 */
-	public static boolean appendFile(FTPClient ftpClient, String ftpFileName, File localFile, long skipOffset)
-			throws IOException {
-		InputStream input = null;
-		try {
-			FTPFile ftpFile = FTPClientUtils.getFTPFile(ftpClient, ftpFileName);
-			// 异常检查
-			FTPExceptionUtils.assertPut(localFile, ftpFile, ftpFileName, skipOffset);
-			// 包装文件输入流
-			input = IOUtils.toBufferedInputStream(localFile, ftpClient.getBufferSize());
-			// 断点上传输入流
-			return FTPClientUtils.appendStream(ftpClient, ftpFileName, input, skipOffset);
-		} finally {
-			// 恢复起始位
-			ftpClient.setRestartOffset(0);
-			// 关闭输入通道
-			IOUtils.closeQuietly(input);
-		}
-	}
-	
-	/**
-	 * 
-	 * <p> 追加输入流至FTP服务器： ftpClient.appendFile(remote, local) </p>
-	 * @param ftpClient		： FTPClient对象
-	 * @param ftpFileName	：文件名称
-	 * @param input			：输入流
-	 * @param skipOffset	：跳过已经存在的长度
-	 * @return
-	 * @throws IOException
-	 */
-	public static boolean appendStream(FTPClient ftpClient, String ftpFileName, InputStream input, long skipOffset)
-			throws IOException {
-		try {
-			boolean hasFile = FTPClientUtils.hasFile(ftpClient, ftpFileName);
-			// 异常检查
-			FTPExceptionUtils.assertFile(hasFile, ftpFileName);
-			try {
-				// 跳过已经存在的长度,实现断点续传
-				IOUtils.skip(input, skipOffset);
-			} catch (Exception e) {
-				LOG.error(ExceptionUtils.getStackTrace(e));
-				return false;
-			}
-			// 追加文件内容
-			boolean hasAppend = ftpClient.appendFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName), input);
-			// 异常检查
-			FTPExceptionUtils.assertAppend(hasAppend, ftpFileName);
-			return true;
-		} finally {
-			// 恢复起始位
-			ftpClient.setRestartOffset(0);
-			// 关闭输入通道
-			IOUtils.closeQuietly(input);
-		}
-	}
-
 	/**
 	 * 
 	 * <p> 切换目录至指定目录，如果指定目录不存在则切换回原目录，并返回结果标志 </p>
@@ -432,6 +355,9 @@ public class FTPClientUtils {
 	}
 
 	public static FTPFile getFTPFile(FTPClient ftpClient, String ftpFileName) throws IOException {
+		
+		ftpClient.listFiles(null, new NameFileFilter(ftpFileName));
+		
 		// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
 		FTPFile[] files = ftpClient.listFiles(FTPStringUtils.getRemoteName(ftpClient, ftpFileName));
 		// 异常检查
@@ -450,6 +376,11 @@ public class FTPClientUtils {
 		try {
 			// 切换目录
 			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
+			ftpClient.listFiles(ftpDir, new NameFileFilter(ftpFileName));
+			
+			
 			// 异常检查
 			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
 			return FTPClientUtils.getFTPFile(ftpClient, ftpFileName);
@@ -490,6 +421,7 @@ public class FTPClientUtils {
 		try {
 			// 切换目录
 			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
 			// 异常检查
 			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
 			// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
@@ -526,6 +458,7 @@ public class FTPClientUtils {
 		try {
 			// 切换目录
 			boolean hasChanged = changeDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
 			// 异常检查
 			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
 			// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
@@ -558,6 +491,8 @@ public class FTPClientUtils {
 		try {
 			// 切换目录
 			boolean hasChanged = changeDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
 			// 异常检查
 			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
 			// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
@@ -579,6 +514,14 @@ public class FTPClientUtils {
 		return fileList;
 	}
 
+	/**
+	 * 
+	 * <p> 创建目录，并且创建完目录后，设置工作目录为当前创建的目录下</p>
+	 * @param ftpClient
+	 * @param ftpDir
+	 * @return
+	 * @throws IOException
+	 */
 	public static boolean makeRootDir(FTPClient ftpClient, String ftpDir) throws IOException {
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
@@ -705,128 +648,14 @@ public class FTPClientUtils {
 		}
 	}
 
-	public static InputStream getInputStream(FTPClient ftpClient, FTPFile ftpFile, long skipOffset) throws IOException {
-		// 设置接收数据流的起始位置
-		ftpClient.setRestartOffset(Math.max(0, skipOffset));
-		/**
-		 * 从服务器返回指定名称的文件的InputStream以便读取;可能Socket每次接收8KB
-		 * 如果当前文件类型是ASCII，返回的InputStream将转换文件中的行分隔符到本地的代表性。 您必须关闭InputStream的当你完成从它读。
-		 * 本身的InputStream将被关闭，关闭后父数据连接插座的照顾。
-		 * 为了完成文件传输你必须调用completePendingCommand并检查它的返回值来验证成功。
-		 */
-		InputStream buffInput = IOUtils.toBufferedInputStream(ftpClient.retrieveFileStream(ftpFile.getName()),
-				ftpClient.getBufferSize());
-		// 获得InputStream
-		return FTPStreamUtils.toWrapedInputStream(buffInput, ftpClient);
-	}
-
-	public static InputStream getInputStream(FTPClient ftpClient, String ftpDir, String ftpFileName, long skipOffset)
-			throws IOException {
-		// FTP服务根文件目录
-		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
-		try {
-			// 切换目录
-			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
-			InputStream buffInput = null;
-			if (FTPClientUtils.hasFile(ftpClient, ftpDir, ftpFileName)) {
-				// 设置接收数据流的起始位置
-				ftpClient.setRestartOffset(Math.max(0, skipOffset));
-				/**
-				 * 从服务器返回指定名称的文件的InputStream以便读取。
-				 * 如果当前文件类型是ASCII，返回的InputStream将转换文件中的行分隔符到本地的代表性。 您必须关闭InputStream的当你完成从它读。
-				 * 本身的InputStream将被关闭，关闭后父数据连接插座的照顾。
-				 * 为了完成文件传输你必须调用completePendingCommand并检查它的返回值来验证成功。
-				 */
-				buffInput = IOUtils.toBufferedInputStream(
-						ftpClient.retrieveFileStream(FTPStringUtils.getRemoteName(ftpClient, ftpFileName)),
-						ftpClient.getBufferSize());
-			}
-			// 获得InputStream
-			return FTPStreamUtils.toWrapedInputStream(buffInput, ftpClient);
-		} finally {
-			// 切换目录至根目录
-			ftpClient.changeWorkingDirectory(rootDir);
-		}
-	}
-
-	public static OutputStream getOutputStream(FTPClient ftpClient, String ftpFileName) throws IOException {
-		// 获得OutputStream
-		return FTPClientUtils.getOutputStream(ftpClient, ftpFileName, false);
-	}
-
-	public static OutputStream getOutputStream(FTPClient ftpClient, String ftpFileName, boolean unique)
-			throws IOException {
-		// 转码后的文件名
-		String remoteName = FTPStringUtils.getRemoteName(ftpClient, ftpFileName);
-		// 带缓冲的输出流
-		OutputStream buffOutput = null;
-		// 文件存在
-		if (FTPClientUtils.hasFile(ftpClient, ftpFileName)) {
-			// 返回一个输出流OutputStream,以便向服务器写入一个文件，该文件由用户自己指定
-			buffOutput = IOUtils.toBufferedOutputStream(ftpClient.appendFileStream(remoteName),
-					ftpClient.getBufferSize());
-		} else {
-			// 返回一个输出流OutputStream,以便向服务器写入一个文件，该文件由用户自己指定
-			if (unique) {
-				buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeUniqueFileStream(ftpFileName),
-						ftpClient.getBufferSize());
-			} else {
-				buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeFileStream(ftpFileName),
-						ftpClient.getBufferSize());
-			}
-		}
-		// 获得OutputStream
-		return FTPStreamUtils.toWrapedOutputStream(buffOutput, ftpClient);
-	}
-
-	public static OutputStream getOutputStream(FTPClient ftpClient, String ftpDir, String ftpFileName)
-			throws IOException {
-		// 获得OutputStream
-		return FTPClientUtils.getOutputStream(ftpClient, ftpDir, ftpFileName, false);
-	}
-
-	public static OutputStream getOutputStream(FTPClient ftpClient, String ftpDir, String ftpFileName, boolean unique)
-			throws IOException {
-		// FTP服务根文件目录
-		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
-		try {
-			// 切换目录
-			boolean hasChanged = FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
-			// 转码后的文件名
-			String remoteName = FTPStringUtils.getRemoteName(ftpClient, ftpFileName);
-			// 带缓冲的输出流
-			OutputStream buffOutput = null;
-			// 文件存在
-			if (FTPClientUtils.hasFile(ftpClient, ftpDir, ftpFileName)) {
-				// 返回一个输出流OutputStream,以便向服务器写入一个文件，该文件由用户自己指定
-				buffOutput = IOUtils.toBufferedOutputStream(ftpClient.appendFileStream(remoteName),
-						ftpClient.getBufferSize());
-			} else {
-				// 返回一个输出流OutputStream,以便向服务器写入一个文件，该文件由用户自己指定
-				if (unique) {
-					buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeUniqueFileStream(ftpFileName),
-							ftpClient.getBufferSize());
-				} else {
-					buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeFileStream(ftpFileName),
-							ftpClient.getBufferSize());
-				}
-			}
-			// 获得OutputStream
-			return FTPStreamUtils.toWrapedOutputStream(buffOutput, ftpClient);
-		} finally {
-			// 切换目录至根目录
-			ftpClient.changeWorkingDirectory(rootDir);
-		}
-	}
-
+	
+	/**
+	 * 
+	 * 获取当前目录的父级目录
+	 * @param ftpClient		： FTPClient对象
+	 * @return
+	 * @throws IOException
+	 */
 	public static String getParentDirectory(FTPClient ftpClient) throws IOException {
 		// 当前目录
 		String currentDir = ftpClient.printWorkingDirectory();
@@ -838,8 +667,8 @@ public class FTPClientUtils {
 	/**
 	 * 
 	 * 检查指定目录是否存在
-	 * @param ftpClient
-	 * @param ftpDir
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：文件目录
 	 * @return
 	 * @throws IOException
 	 */
@@ -856,93 +685,36 @@ public class FTPClientUtils {
 			ftpClient.changeWorkingDirectory(rootDir);
 		}
 	}
-
+	
 	/**
-	 * 
-	 *  检查指定文件是否存在
-	 * @param ftpClient
-	 * @param ftpDir
-	 * @param ftpFileName
+	 * 删除FTP服务器上的文件
+	 * <p> 1、采用方法： ftpClient.deleteFile(pathname) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param fileNames		：文件名称
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean hasFile(FTPClient ftpClient, String ftpDir, String ftpFileName) throws IOException {
-		// FTP服务根文件目录
-		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
-		try {
-			boolean hasFile = false;
-			// 切换目录
-			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
-			// 目录未切换成功;表示指定的目录不存在
-			if (hasChanged) {
-				hasFile = FTPClientUtils.hasFile(ftpClient, ftpFileName);
-			}
-			return hasFile;
-		} finally {
-			// 切换目录至根目录
-			ftpClient.changeWorkingDirectory(rootDir);
-		}
-	}
-
-	public static boolean hasFile(FTPClient ftpClient, String ftpFileName) throws IOException {
-		boolean hasFile = false;
-		String[] fileNames = ftpClient.listNames();
-		if (fileNames != null && fileNames.length > 0) {
-			for (int i = 0; i < fileNames.length; i++) {
-				if (fileNames[i] != null && FTPStringUtils.getLocalName(ftpClient, fileNames[i]).equals(ftpFileName)) {
-					hasFile = true;
-					break;
-				}
-			}
-		}
-		return hasFile;
-	}
-
-	public static boolean remove(FTPClient ftpClient, String ftpFileName) throws IOException {
-		// 删除 FTP 站点上的一个指定文件
-		boolean hasDel = ftpClient.deleteFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName));
-		// 异常检查
-		FTPExceptionUtils.assertDel(hasDel, ftpFileName);
-		return hasDel;
-	}
-
-	public static boolean remove(FTPClient ftpClient, String[] ftpFiles) throws IOException {
-		for (String ftpFileName : ftpFiles) {
+	public static boolean deleteFile(FTPClient ftpClient, String... fileNames) throws IOException {
+		for (String fileName : fileNames) {
 			// 删除 FTP 站点上的一个指定文件
-			boolean hasDel = ftpClient.deleteFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName));
+			boolean hasDel = ftpClient.deleteFile(fileName);
 			if (!hasDel) {
-				LOG.error("Can't remove file [" + ftpFileName + "] from FTP server.");
+				LOG.error("Can't Del file [" + fileName + "] from FTP server.");
 			}
 		}
 		return true;
 	}
-
-	public static boolean remove(FTPClient ftpClient, String ftpDir, String ftpFileName) throws IOException {
-		// FTP服务根文件目录
-		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
-		// 删除 FTP 站点上的一个指定文件
-		boolean hasDel = false;
-		try {
-			// 切换目录
-			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
-			// 删除文件
-			hasDel = ftpClient.deleteFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName));
-			// 异常检查
-			FTPExceptionUtils.assertDel(hasDel, ftpFileName);
-		} finally {
-			// 切换目录至根目录
-			ftpClient.changeWorkingDirectory(rootDir);
-		}
-		return hasDel;
-	}
-
-	public static boolean remove(FTPClient ftpClient, String ftpDir, String[] ftpFiles) throws IOException {
+	
+	/**
+	 * 删除FTP服务器上的文件
+	 * <p> 1、采用方法： ftpClient.deleteFile(pathname) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：文件目录
+	 * @param fileNames		：文件名称
+	 * @return
+	 * @throws IOException
+	 */
+	public static boolean deleteFile(FTPClient ftpClient, String ftpDir, String... fileNames) throws IOException {
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
 		// 切换目录至根目录
@@ -950,13 +722,15 @@ public class FTPClientUtils {
 		try {
 			// 切换目录
 			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
-			for (String ftpFileName : ftpFiles) {
-				// 删除 FTP 站点上的一个指定文件
-				boolean hasDel = ftpClient.deleteFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName));
-				if (!hasDel) {
-					LOG.error("Can't remove file '" + ftpFileName + "' from FTP server.");
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
+			if( hasChanged ) {
+				for (String fileName : fileNames) {
+					// 删除 FTP 站点上的一个指定文件
+					boolean hasDel = ftpClient.deleteFile(fileName);
+					if (!hasDel) {
+						LOG.error("Can't Del file '" + fileName + "' from FTP server.");
+					}
 				}
 			}
 		} finally {
@@ -1028,30 +802,43 @@ public class FTPClientUtils {
 			ftpClient.changeWorkingDirectory(rootDir);
 		}
 	}
+	
 
+	/**
+	 * 从服务器下载指定文件夹（包含子文件）并且写入本地文件夹
+	 * <p> 1、调用方法： ftpClient.retrieveFile(remote, local) </p>
+	 * <p> 2、特别注意： 本方法不适用大文件，易造成内存溢出 </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：上传目录
+	 * @param fileName		：文件名称
+	 * @return OutputStream {@link BufferedOutputStream} 对象
+	 * @throws IOException
+	 */
 	public static void retrieveToDir(FTPClient ftpClient, String ftpDir, File localDir) throws Exception {
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
 		try {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
 			// 遍历当前目录下的文件
-			List<FTPFile> fileList = FTPClientUtils.listFiles(ftpClient, ftpDir);
+			List<FTPFile> fileList = listFiles(ftpClient, ftpDir);
 			// 切换到指定目录
-			FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
 			// 循环下载文件
 			for (FTPFile ftpFile : fileList) {
 				// 解码后的文件名
 				String fileName = FTPStringUtils.getLocalName(ftpClient, ftpFile);
 				if (ftpFile.isFile()) {
 					// 写FTPFile到指定文件路径
-					FTPClientUtils.retrieveToFile(ftpClient, ftpFile, new File(localDir, fileName));
+					retrieveToFile(ftpClient, ftpFile, new File(localDir, fileName));
 				} else if (ftpFile.isDirectory()) {
 					File newDir = new File(localDir, fileName);
 					if (!newDir.exists()) {
 						newDir.mkdirs();
 					}
-					FTPClientUtils.retrieveToDir(ftpClient, ftpDir, localDir);
+					retrieveToDir(ftpClient, ftpDir, newDir);
 				}
 			}
 		} finally {
@@ -1114,9 +901,9 @@ public class FTPClientUtils {
 			throws IOException {
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
 		try {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
 			// 转换目录为目标服务器目录格式
 			ftpDir = FTPPathUtils.getPath(ftpDir);
 			// 检测文件是否存在
@@ -1133,119 +920,203 @@ public class FTPClientUtils {
 			ftpClient.changeWorkingDirectory(rootDir);
 		}
 	}
+	
 
-	public static void retrieveToStream(FTPClient ftpClient, String ftpDir, String ftpFileName, OutputStream output)
-			throws IOException {
+
+	/**
+	 * 从服务器返回指定名称的文件并且写入到ByteArrayOutputStream并返回该OuputStream，以便写入到文件或其它地方（基于buffer）
+	 * <p> 1、调用方法： ftpClient.retrieveFile(remote, local) </p>
+	 * <p> 2、特别注意： 本方法不适用大文件，易造成内存溢出 </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：上传目录
+	 * @param fileName		：文件名称
+	 * @return OutputStream {@link BufferedOutputStream} 对象
+	 * @throws IOException
+	 */
+	public static OutputStream retrieveToMem(FTPClient ftpClient, String ftpDir, String fileName) throws IOException {
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
 		try {
-			// 检测文件是否存在
-			if (FTPClientUtils.hasFile(ftpClient, ftpDir, ftpFileName)) {
-				// 切换目录
-				FTPClientUtils.changeDirectory(ftpClient, ftpDir);
-				// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-				boolean hasGet = ftpClient.retrieveFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName), output);
-				// 异常检查
-				FTPExceptionUtils.assertGet(hasGet, ftpFileName);
-				// 刷新输出
-				output.flush();
-			}
-		} finally {
-			// 关闭输出流
-			IOUtils.closeQuietly(output);
+			
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
-		}
-	}
-
-	public static void retrieveToStream(FTPClient ftpClient, String ftpFileName, OutputStream output)
-			throws IOException {
-		try {
-			// 检测文件是否存在
-			if (FTPClientUtils.hasFile(ftpClient, ftpFileName)) {
-				// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-				boolean hasGet = ftpClient.retrieveFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName), output);
-				// 异常检查
-				FTPExceptionUtils.assertGet(hasGet, ftpFileName);
-				// 刷新输出
-				output.flush();
-			}
-		} finally {
-			// 关闭输出流
-			IOUtils.closeQuietly(output);
-		}
-	}
-
-	public static void retrieveToResponse(FTPClient ftpClient, String ftpDir, String ftpFileName,
-			ServletResponse response) throws IOException {
-		// FTP服务根文件目录
-		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
-		try {
-			// 转换目录为目标服务器目录格式
-			ftpDir = FTPPathUtils.getPath(ftpDir);
-			// 检测文件是否存在
-			if (FTPClientUtils.hasFile(ftpClient, ftpDir, ftpFileName)) {
-				// 转换路径
-				String targetDir = FTPStringUtils.getRemoteName(ftpClient, ftpDir);
-				// 切换目录
-				ftpClient.changeWorkingDirectory(targetDir);
-				ftpClient.printWorkingDirectory();
-				// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-				boolean hasGet = ftpClient.retrieveFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName),
-						response.getOutputStream());
-				// 异常检查
-				FTPExceptionUtils.assertGet(hasGet, ftpFileName);
-			}
+			// 切换目录
+			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
+			// 带缓冲的输出流
+			OutputStream buffOutput = IOUtils.toBufferedOutputStream(new ByteArrayOutputStream(), ftpClient.getBufferSize());
+			// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
+			ftpClient.retrieveFile(fileName, buffOutput);
+			
+			return buffOutput;
 		} finally {
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
-		}
-	}
-
-	public static void retrieveToResponse(FTPClient ftpClient, String ftpFileName, ServletResponse response)
-			throws IOException {
-		try {
-			// 检测文件是否存在
-			if (FTPClientUtils.hasFile(ftpClient, ftpFileName)) {
-				// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-				boolean hasGet = ftpClient.retrieveFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName),
-						response.getOutputStream());
-				// 异常检查
-				FTPExceptionUtils.assertGet(hasGet, ftpFileName);
-				// 刷新输出
-				response.flushBuffer();
-				;
-			}
-		} finally {
 		}
 	}
 
 	/**
+	 * 从服务器返回指定名称的文件并且写入到ByteArrayOutputStream并返回该OuputStream，以便写入到文件或其它地方（基于buffer）
+	 * <p> 1、调用方法： ftpClient.retrieveFile(remote, local) </p>
+	 * <p> 2、特别注意： 本方法不适用大文件，易造成内存溢出 </p>
+     * @param ftpClient		： FTPClient对象
+	 * @param fileName		：文件名称
+	 * @return OutputStream {@link BufferedOutputStream} 对象
+	 * @throws IOException
+	 */
+	public static OutputStream retrieveToMem(FTPClient ftpClient, String fileName)
+			throws IOException {
+		// 带缓冲的输出流
+		OutputStream buffOutput = IOUtils.toBufferedOutputStream(new ByteArrayOutputStream(), ftpClient.getBufferSize());
+		// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
+		ftpClient.retrieveFile(fileName, buffOutput);
+		
+		return buffOutput;
+	}
+
+	/**
+	 * 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
+	 * <p> 1、调用方法： ftpClient.retrieveFile(remote, local) </p>
+     * @param ftpClient		： FTPClient对象
+	 * @param fileName		：文件名称
+	 * @param output		：输出流
+	 * @throws IOException
+	 */
+	public static void retrieveToStream(FTPClient ftpClient, String fileName, OutputStream output)
+			throws IOException {
+		// 带缓冲的输出流
+		OutputStream buffOutput = null;
+		try {
+			// 返回带缓冲的输出流
+			buffOutput = IOUtils.toBufferedOutputStream(output, ftpClient.getBufferSize());
+			// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
+			ftpClient.retrieveFile(fileName, buffOutput);
+			// 刷新输出
+			buffOutput.flush();
+		} finally {
+			// 关闭输出流
+			IOUtils.closeQuietly(buffOutput);
+		}
+	}
+	
+	/**
+	 * 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
+	 * <p> 1、调用方法： ftpClient.retrieveFile(remote, local) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：上传目录
+	 * @param fileName		：文件名称
+	 * @param output		：输出流
+	 * @throws IOException
+	 */
+	public static void retrieveToStream(FTPClient ftpClient, String ftpDir, String fileName, OutputStream output)
+			throws IOException {
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		// 带缓冲的输出流
+		OutputStream buffOutput = null;
+		try {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+			// 切换目录
+			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
+			// 返回带缓冲的输出流
+			buffOutput = IOUtils.toBufferedOutputStream(output, ftpClient.getBufferSize());
+			// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
+			ftpClient.retrieveFile(fileName, buffOutput);
+			// 刷新输出
+			buffOutput.flush();
+			
+		} finally {
+			// 关闭输出流
+			IOUtils.closeQuietly(buffOutput);
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+		}
+	}
+	
+	/**
 	 * 
-	 * <p> 上传文件至FTP服务器，根据服务端是否已有文件采用不同的方法：</p>
-	 * <p> ftpClient.storeUniqueFile(remote, local)</p>
-	 * <p> ftpClient.storeFile(remote, local)</p>
-	 * @param ftpClient
-	 * @param ftpFileName
-	 * @param localFile
-	 * @param unique
+	 * <p> 追加输入流至FTP服务器： ftpClient.appendFile(remote, local) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param fileName		：文件名称
+	 * @param input			：输入流
+	 * @param skipOffset	：跳过已经存在的长度
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean storeFile(FTPClient ftpClient, String ftpFileName, File localFile, boolean unique)
+	public static boolean resumeFile(FTPClient ftpClient, String fileName, InputStream input, long skipOffset)
 			throws IOException {
-		// 异常检查
-		FTPExceptionUtils.assertPut(localFile);
-		InputStream input = null;
 		try {
-			// 包装文件输入流
-			input = IOUtils.toBufferedInputStream(localFile, ftpClient.getBufferSize());
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("local : fileName = {0} ", fileName);
+			String renamedName = ftpClient.getFileRenamePolicy().rename(fileName);
+			LOG.debug("rename : fileName = {0}, path = {1}", renamedName);
+			
+			
+			
+			boolean hasFile = FTPClientUtils.hasFile(ftpClient, ftpFileName);
+			// 异常检查
+			FTPExceptionUtils.assertFile(hasFile, ftpFileName);
+			try {
+				// 跳过已经存在的长度,实现断点续传
+				IOUtils.skip(input, skipOffset);
+			} catch (Exception e) {
+				LOG.error(ExceptionUtils.getStackTrace(e));
+				return false;
+			}
+			
 			// 追加文件内容
-			return FTPClientUtils.storeStream(ftpClient, ftpFileName, input, unique);
+			boolean hasAppend = ftpClient.appendFile(FTPStringUtils.getRemoteName(ftpClient, ftpFileName), input);
+			// 异常检查
+			FTPExceptionUtils.assertAppend(hasAppend, ftpFileName);
+			return true;
+		} finally {
+			
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+		}
+	}
+	
+	/**
+	 * 
+	 * 上传输入流至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、采用方法： ftpClient.storeFile(remote, local) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param fileName		：文件名称 
+	 * @param input			： 输入流
+	 * @return
+	 * @throws IOException
+	 */
+	public static FTPStoreResult resumeFile(FTPClient ftpClient, String fileName, InputStream input) throws IOException {
+		try {
+			
+			// 参数检查
+			Assert.notNull(fileName, "The fileName must not be null.");
+			Assert.notNull(input, "The input must not be null.");
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("local : fileName = {0} ", fileName);
+			String renamedName = ftpClient.getFileRenamePolicy().rename(fileName);
+			LOG.debug("rename : fileName = {0}, path = {1}", renamedName);
+			
+			result.setLength(input.available());
+			result.setOriginalName(fileName);
+			result.setRenamedName(renamedName);
+			
+			// 包装文件输入流
+			input = IOUtils.toBufferedInputStream(input, ftpClient.getBufferSize());
+			// 根据指定的名字和输入流InputStream向服务器上传一个文件
+			result.setResult(ftpClient.storeFile(renamedName, input));
+			
+			return result;
+			
 		} finally {
 			// 关闭输入通道
 			IOUtils.closeQuietly(input);
@@ -1253,22 +1124,149 @@ public class FTPClientUtils {
 	}
 	
 	/**
-	 * <p> 上传文件至FTP服务器，根据服务端是否已有文件采用不同的方法：</p>
-	 * <p> ftpClient.deleteFile(remote)</p>
-	 * <p> ftpClient.storeUniqueFile(remote, local)</p>
-	 * <p> ftpClient.storeFile(remote, local)</p>
-	 * <p> ftpClient.appendFile(remote, local)</p>
+	 * 上传输入流至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、采用方法： ftpClient.storeFile(remote, local) </p>
 	 * @param ftpClient		： FTPClient对象
 	 * @param ftpDir		：上传目录
-	 * @param ftpFileName	：文件名称
-	 * @param localFile		：文件
-	 * @param delIfExists	：如果文件存在是否删除
+	 * @param fileName	：文件名称
+	 * @param input			：输入流
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean storeFile(FTPClient ftpClient, String ftpDir, String ftpFileName, File localFile,
-			boolean delIfExists) throws IOException {
-		return FTPClientUtils.storeFile(ftpClient, ftpDir, ftpFileName, localFile, delIfExists, false);
+	public static FTPStoreResult resumeFile(FTPClient ftpClient, String ftpDir, String fileName, InputStream input) throws IOException {
+		
+		// 参数检查
+		Assert.notNull(ftpDir, "The ftpDir must not be null.");
+		Assert.notNull(fileName, "The fileName must not be null.");
+		Assert.notNull(input, "The input must not be null.");
+		
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		
+		try {
+			
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("local : fileName = {0} ", fileName);
+			String renamedName = ftpClient.getFileRenamePolicy().rename(fileName);
+			LOG.debug("rename : fileName = {0}, path = {1}", renamedName);
+			
+			result.setLength(input.available());
+			result.setOriginalName(fileName);
+			result.setRenamedName(renamedName);
+			
+			// 切换目录
+			boolean hasChanged = FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
+			if(hasChanged) {
+				// 将指定的输入流写入 FTP 站点上的一个指定文件
+				// 包装文件输入流
+				input = IOUtils.toBufferedInputStream(input, ftpClient.getBufferSize());
+				// 根据指定的名字和输入流InputStream向服务器上传一个文件
+				result.setResult(ftpClient.storeFile(renamedName, input));
+			} else {
+				result.setResult(false);
+			}
+			
+			return result;
+		} finally {
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+		}
+	}
+	
+	
+	/**
+	 * <p> 追加文件至FTP服务器： ftpClient.appendFile(remote, local) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpFileName	：文件名称
+	 * @param localFile		：文件
+	 * @return
+	 * @throws IOException
+	 */
+	public static FTPStoreResult resumeFile(FTPClient ftpClient, File localFile, String originalName) throws IOException {
+		InputStream input = null;
+		try {
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("localFile : fileName = {0}, path = {1}", localFile.getName(), localFile.getAbsolutePath());
+			File renameFile = ftpClient.getFileRenamePolicy().rename(localFile);
+			LOG.debug("renameFile : fileName = {0}, path = {1}", renameFile.getName(), renameFile.getAbsolutePath());
+			
+			result.setLength(renameFile.length());
+			result.setOriginalName(localFile.getName());
+			result.setRenamedName(renameFile.getName());
+			
+			
+			// 查询当前目录是否有指定的文件
+			FTPFile[] files = ftpClient.listFiles(null, new NameFileFilter(renameFile.getName()));
+			
+			Assert.isTrue(null != files && files.length == 1, "The File named of  [" + renameFile.getName() + "] was exists on FTP server.");
+			
+			
+			FTPFile ftpFile = ftpClient.mdtmFile(originalName);
+			// 文件存在，则进行续传
+			if(ftpFile != null) {
+				
+			} else {
+				
+				
+			}
+			
+			FTPFile ftpFile = FTPClientUtils.getFTPFile(ftpClient, renameFile.getName());
+			// 异常检查
+			FTPExceptionUtils.assertPut(localFile, ftpFile, renameFile);
+			// 包装文件输入流
+			input = IOUtils.toBufferedInputStream(new FileInputStream(localFile), ftpClient.getBufferSize());
+			// 断点上传输入流
+			boolean rt = FTPClientUtils.appendStream(ftpClient, ftpFileName, input, localFile.length() - ftpFile.getSize());
+			
+			
+			return result;
+			
+		} finally {
+			// 恢复起始位
+			ftpClient.setRestartOffset(0);
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+		}
+	}
+	
+	/**
+	 * 
+	 * <p> 追加文件至FTP服务器： ftpClient.appendFile(remote, local) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpFileName	：文件名称
+	 * @param localFile		：文件
+	 * @param skipOffset	：跳过已经存在的长度
+	 * @return
+	 * @throws IOException
+	 */
+	public static boolean resumeFile(FTPClient ftpClient, String ftpFileName, File localFile, long skipOffset)
+			throws IOException {
+		InputStream input = null;
+		try {
+			FTPFile ftpFile = FTPClientUtils.getFTPFile(ftpClient, ftpFileName);
+			// 异常检查
+			FTPExceptionUtils.assertPut(localFile, ftpFile, ftpFileName, skipOffset);
+			// 包装文件输入流
+			input = IOUtils.toBufferedInputStream(localFile, ftpClient.getBufferSize());
+			// 断点上传输入流
+			return FTPClientUtils.appendStream(ftpClient, ftpFileName, input, skipOffset);
+		} finally {
+			// 恢复起始位
+			ftpClient.setRestartOffset(0);
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+		}
 	}
 	
 	/**
@@ -1287,17 +1285,25 @@ public class FTPClientUtils {
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean storeFile(FTPClient ftpClient, String ftpDir, String ftpFileName, File localFile,
+	public static boolean resumeFile(FTPClient ftpClient, String ftpDir, File localFile,
 			boolean delIfExists, boolean unique) throws IOException {
+		
+		// 文件检查
+		Assert.isTrue(localFile.isFile(), "Local file [" + localFile.getPath() + "] not a file.");
+		Assert.isTrue(localFile.exists(), "Local file [" + localFile.getPath() + "] not exist.");
+	
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 异常检查
-		FTPExceptionUtils.assertPut(localFile);
 		// 切换目录至根目录
 		ftpClient.changeWorkingDirectory(rootDir);
+		
 		try {
-			// 检查文件是否存在
-			if (FTPClientUtils.hasFile(ftpClient, ftpDir, ftpFileName)) {
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("localFile : fileName = {0}, path = {1}", localFile.getName(), localFile.getAbsolutePath());
+			File renameFile = ftpClient.getFileRenamePolicy().rename(localFile);
+			LOG.debug("renameFile : fileName = {0}, path = {1}", renameFile.getName(), renameFile.getAbsolutePath());
+			
 				// 切换目录
 				FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
 				// 同名文件存在，要求删除
@@ -1316,7 +1322,8 @@ public class FTPClientUtils {
 					// 断点上传文件
 					return FTPClientUtils.appendFile(ftpClient, ftpFileName, localFile, ftpFile.getSize());
 				}
-			}
+
+				
 			// 切换目录
 			FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
 			// 上传完整文件
@@ -1328,6 +1335,150 @@ public class FTPClientUtils {
 			ftpClient.changeWorkingDirectory(rootDir);
 		}
 	}
+	
+
+	/**
+	 * 
+	 * <p> 上传输入流至FTP服务器，根据服务端是否已有文件采用不同的方法：</p>
+	 * <p> ftpClient.storeFile(remote, local)</p>
+	 * <p> ftpClient.appendFile(remote, local)</p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：上传目录
+	 * @param ftpFileName	：文件名称
+	 * @param input			：输入流
+	 * @param delIfExists	：如果文件存在是否删除
+	 * @return
+	 * @throws IOException
+	 */
+	public static boolean resumeFile(FTPClient ftpClient, String ftpDir, String ftpFileName, InputStream input,
+			boolean delIfExists) throws IOException {
+		return FTPClientUtils.storeFile(ftpClient, ftpDir, ftpFileName, input, delIfExists, false);
+	}	
+	
+	/**
+	 * 
+	 * <p> 返回一个输出流OutputStream,以便向服务器写入一个文件（支持断点续传）：</p>
+	 * <p> ftpClient.appendFileStream(String remote) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param fileName		：文件名称 
+	 * @return
+	 * @throws IOException
+	 */
+	public static OutputStream resumeFileStream(FTPClient ftpClient, String fileName)
+			throws IOException {
+		// 返回一个输出流OutputStream,以便向服务器写入一个文件，该文件由用户自己指定
+		OutputStream buffOutput = IOUtils.toBufferedOutputStream(ftpClient.appendFileStream(fileName), ftpClient.getBufferSize());
+		// 获得OutputStream
+		return FTPStreamUtils.toWrapedOutputStream(buffOutput, ftpClient);
+	}
+	
+
+	/**
+	 * 上传文件至FTP服务器，根据unique参数采用不同的方法：
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、根据unique参数采用不同的方法： ftpClient.storeUniqueFile(remote, local) 或  ftpClient.storeFile(remote, local) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param localFile		：本地文件
+	 * @param unique		：文件名是否唯一
+	 * @return {@link FTPStoreResult} 上传结果
+	 * @throws IOException
+	 */
+	public static FTPStoreResult storeFile(FTPClient ftpClient, File localFile, boolean unique) throws IOException {
+		
+		// 文件检查
+		Assert.isTrue(localFile.isFile(), "Local file [" + localFile.getPath() + "] not a file.");
+		Assert.isTrue(localFile.exists(), "Local file [" + localFile.getPath() + "] not exist.");
+		
+		InputStream input = null;
+		try {
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("localFile : fileName = {0}, path = {1}", localFile.getName(), localFile.getAbsolutePath());
+			File renameFile = ftpClient.getFileRenamePolicy().rename(localFile);
+			LOG.debug("renameFile : fileName = {0}, path = {1}", renameFile.getName(), renameFile.getAbsolutePath());
+			
+			result.setLength(renameFile.length());
+			result.setOriginalName(localFile.getName());
+			result.setRenamedName(renameFile.getName());
+			
+			// 包装文件输入流
+			input = IOUtils.toBufferedInputStream(renameFile, ftpClient.getBufferSize());
+			
+			if(unique) {
+				result.setResult(ftpClient.storeUniqueFile(renameFile.getName(), input));
+			} else {
+				result.setResult(ftpClient.storeFile(renameFile.getName(), input));
+			}
+			
+			return result;
+			
+		} finally {
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+		}
+		 
+	}
+	
+	/**
+	 * 上传文件至FTP服务器，根据unique参数采用不同的方法：
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、根据unique参数采用不同的方法： ftpClient.storeUniqueFile(remote, local) 或  ftpClient.storeFile(remote, local) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：上传目录
+	 * @param localFile		：本地文件
+	 * @param unique		：文件名是否唯一
+	 * @return {@link FTPStoreResult} 上传结果
+	 * @throws IOException
+	 */
+	public static FTPStoreResult storeFile(FTPClient ftpClient, String ftpDir, File localFile, boolean unique) throws IOException {
+		
+		// 文件检查
+		Assert.isTrue(localFile.isFile(), "Local file [" + localFile.getPath() + "] not a file.");
+		Assert.isTrue(localFile.exists(), "Local file [" + localFile.getPath() + "] not exist.");
+	
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		InputStream input = null;
+		try {
+			
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("localFile : fileName = {0}, path = {1}", localFile.getName(), localFile.getAbsolutePath());
+			File renameFile = ftpClient.getFileRenamePolicy().rename(localFile);
+			LOG.debug("renameFile : fileName = {0}, path = {1}", renameFile.getName(), renameFile.getAbsolutePath());
+			
+			result.setLength(renameFile.length());
+			result.setOriginalName(localFile.getName());
+			result.setRenamedName(renameFile.getName());
+				
+			// 切换目录
+			boolean hasChanged = FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
+			// 包装文件输入流
+			input = IOUtils.toBufferedInputStream(renameFile, ftpClient.getBufferSize());
+			
+			if(unique) {
+				result.setResult(ftpClient.storeUniqueFile(renameFile.getName(), input));
+			} else {
+				result.setResult(ftpClient.storeFile(renameFile.getName(), input));
+			}
+			
+			return result;
+		} finally {
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+		}
+	}
+	
 	
 	/**
 	 * 
@@ -1647,30 +1798,139 @@ public class FTPClientUtils {
 		}
 	}
 	
+
+	public static InputStream retrieveFileStream(FTPClient ftpClient, FTPFile ftpFile, long skipOffset) throws IOException {
+		// 设置接收数据流的起始位置
+		ftpClient.setRestartOffset(Math.max(0, skipOffset));
+		/**
+		 * 从服务器返回指定名称的文件的InputStream以便读取;可能Socket每次接收8KB
+		 * 如果当前文件类型是ASCII，返回的InputStream将转换文件中的行分隔符到本地的代表性。 您必须关闭InputStream的当你完成从它读。
+		 * 本身的InputStream将被关闭，关闭后父数据连接插座的照顾。
+		 * 为了完成文件传输你必须调用completePendingCommand并检查它的返回值来验证成功。
+		 */
+		InputStream buffInput = IOUtils.toBufferedInputStream(ftpClient.retrieveFileStream(ftpFile.getName()),
+				ftpClient.getBufferSize());
+		// 获得InputStream
+		return FTPStreamUtils.toWrapedInputStream(buffInput, ftpClient);
+	}
+
+	public static InputStream retrieveFileStream(FTPClient ftpClient, String ftpDir, String fileName, long skipOffset)
+			throws IOException {
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		try {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+			// 切换目录
+			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			// 异常检查
+			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
+			InputStream buffInput = null;
+			if (FTPClientUtils.hasFile(ftpClient, ftpDir, fileName)) {
+				// 设置接收数据流的起始位置
+				ftpClient.setRestartOffset(Math.max(0, skipOffset));
+				/**
+				 * 从服务器返回指定名称的文件的InputStream以便读取。
+				 * 如果当前文件类型是ASCII，返回的InputStream将转换文件中的行分隔符到本地的代表性。 您必须关闭InputStream的当你完成从它读。
+				 * 本身的InputStream将被关闭，关闭后父数据连接插座的照顾。
+				 * 为了完成文件传输你必须调用completePendingCommand并检查它的返回值来验证成功。
+				 */
+				buffInput = IOUtils.toBufferedInputStream(
+						ftpClient.retrieveFileStream(FTPStringUtils.getRemoteName(ftpClient, fileName)),
+						ftpClient.getBufferSize());
+			}
+			// 获得InputStream
+			return FTPStreamUtils.toWrapedInputStream(buffInput, ftpClient);
+		} finally {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+		}
+	}
+
 	/**
 	 * 
-	 * <p> 上传输入流至FTP服务器,默认先删除存在同名文件;采用方法： ftpClient.storeFile(remote, local) </p>
+	 * <p> 根据给定的名字返回一个能够向服务器上传文件的OutputStream，根据unique参数采用不同的方法：</p>
+	 * <p> ftpClient.storeUniqueFileStream(String remote) </p>
+	 * <p> ftpClient.storeFileStream(String remote) </p>
 	 * @param ftpClient		：FTPClient对象
-	 * @param ftpFileName	：文件名称 
+	 * @param ftpDir		：文件目录
+	 * @param fileName		：文件名称
+	 * @param unique		：文件是否唯一  
+	 * @return
+	 * @throws IOException
+	 */
+	public static OutputStream storeFileStream(FTPClient ftpClient, String ftpDir, String fileName, boolean unique)
+			throws IOException {
+		
+		// 参数检查
+		Assert.notNull(ftpDir, "The ftpDir must not be null.");
+		Assert.notNull(fileName, "The fileName must not be null.");
+		
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		
+		try {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+			// 切换目录
+			boolean hasChanged = FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			// 带缓冲的输出流
+			OutputStream buffOutput = null;
+			// 返回一个输出流OutputStream,以便向服务器写入一个文件，该文件由用户自己指定
+			if (unique) {
+				buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeUniqueFileStream(fileName),
+						ftpClient.getBufferSize());
+			} else {
+				buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeFileStream(fileName),
+						ftpClient.getBufferSize());
+			}
+			// 获得OutputStream
+			return FTPStreamUtils.toWrapedOutputStream(buffOutput, ftpClient);
+		} finally {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+		}
+	}
+	 
+ 
+	
+	/**
+	 * 
+	 * 上传输入流至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、采用方法： ftpClient.storeFile(remote, local) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param fileName		：文件名称 
 	 * @param input			： 输入流
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean storeStream(FTPClient ftpClient, String ftpFileName, InputStream input) throws IOException {
+	public static FTPStoreResult storeFile(FTPClient ftpClient, String fileName, InputStream input) throws IOException {
 		try {
-			// 如果文件存在，则先删除
-			if (FTPClientUtils.hasFile(ftpClient, ftpFileName)) {
-				FTPClientUtils.remove(ftpClient, ftpFileName);
-			}
-			// 转码后的文件名
-			String remoteName = FTPStringUtils.getRemoteName(ftpClient, ftpFileName);
+			
+			// 参数检查
+			Assert.notNull(fileName, "The fileName must not be null.");
+			Assert.notNull(input, "The input must not be null.");
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("local : fileName = {0} ", fileName);
+			String renamedName = ftpClient.getFileRenamePolicy().rename(fileName);
+			LOG.debug("rename : fileName = {0}, path = {1}", renamedName);
+			
+			result.setLength(input.available());
+			result.setOriginalName(fileName);
+			result.setRenamedName(renamedName);
+			
 			// 包装文件输入流
 			input = IOUtils.toBufferedInputStream(input, ftpClient.getBufferSize());
 			// 根据指定的名字和输入流InputStream向服务器上传一个文件
-			boolean hasPut = ftpClient.storeUniqueFile(remoteName, input);
-			// 异常检查
-			FTPExceptionUtils.assertPut(hasPut, ftpFileName);
-			return true;
+			result.setResult(ftpClient.storeFile(renamedName, input));
+			
+			return result;
+			
 		} finally {
 			// 关闭输入通道
 			IOUtils.closeQuietly(input);
@@ -1678,91 +1938,247 @@ public class FTPClientUtils {
 	}
 	
 	/**
-	 * 
-	 * <p> 上传输入流至FTP服务器，根据服务端是否已有文件采用不同的方法：</p>
-	 * <p> ftpClient.storeFile(remote, local)</p>
-	 * <p> ftpClient.appendFile(remote, local)</p>
+	 * 上传输入流至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、采用方法： ftpClient.storeFile(remote, local) </p>
 	 * @param ftpClient		： FTPClient对象
 	 * @param ftpDir		：上传目录
-	 * @param ftpFileName	：文件名称
+	 * @param fileName		：文件名称
 	 * @param input			：输入流
-	 * @param delIfExists	：如果文件存在是否删除
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean storeStream(FTPClient ftpClient, String ftpFileName, InputStream input, boolean delIfExists)
-			throws IOException {
-		// 从InputStream中读取数据写出FTP服务器
-		return FTPClientUtils.storeStream(ftpClient, ftpFileName, input, delIfExists, false);
-	}
-	
-	/**
-	 * 
-	 * <p> 上传输入流至FTP服务器，根据服务端是否已有文件采用不同的方法：</p>
-	 * <p> ftpClient.storeUniqueFile(remote, local)</p>
-	 * <p> ftpClient.storeFile(remote, local)</p>
-	 * <p> ftpClient.appendFile(remote, local)</p>
-	 * @param ftpClient		： FTPClient对象
-	 * @param ftpDir		：上传目录
-	 * @param ftpFileName	：文件名称
-	 * @param input			：输入流
-	 * @param delIfExists	：如果文件存在是否删除
-	 * @param unique		：是否文件唯一，该参数决定使用那种方法进行上传操作
-	 * @return
-	 * @throws IOException
-	 */
-	public static boolean storeStream(FTPClient ftpClient, String ftpFileName, InputStream input, boolean delIfExists,
-			boolean unique) throws IOException {
+	public static FTPStoreResult storeFile(FTPClient ftpClient, String ftpDir, String fileName, InputStream input) throws IOException {
+		
+		// 参数检查
+		Assert.notNull(ftpDir, "The ftpDir must not be null.");
+		Assert.notNull(fileName, "The fileName must not be null.");
+		Assert.notNull(input, "The input must not be null.");
+		
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		
 		try {
-			// 检查是否有同名文件
-			if (FTPClientUtils.hasFile(ftpClient, ftpFileName)) {
-				// 同名文件存在，要求删除
-				if (delIfExists) {
-					// 将指定的输入流写入 FTP 站点上的一个指定文件
-					return FTPClientUtils.storeStream(ftpClient, ftpFileName, input);
-				} else {
-					// 获取文件信息
-					FTPFile ftpFile = FTPClientUtils.getFTPFile(ftpClient, ftpFileName);
-					// 追加文件内容
-					return FTPClientUtils.appendStream(ftpClient, ftpFileName, input, ftpFile.getSize());
-				}
-			}
-			// 转码后的文件名
-			String remoteName = FTPStringUtils.getRemoteName(ftpClient, ftpFileName);
+			
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("local : fileName = {0} ", fileName);
+			String renamedName = ftpClient.getFileRenamePolicy().rename(fileName);
+			LOG.debug("rename : fileName = {0}, path = {1}", renamedName);
+			
+			result.setLength(input.available());
+			result.setOriginalName(fileName);
+			result.setRenamedName(renamedName);
+			
+			// 切换目录
+			boolean hasChanged = FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
+			// 将指定的输入流写入 FTP 站点上的一个指定文件
 			// 包装文件输入流
 			input = IOUtils.toBufferedInputStream(input, ftpClient.getBufferSize());
-			// 上传成功的标志
-			boolean hasPut = false;
-			if (unique) {
-				// 根据指定的名字和输入流InputStream向服务器上传一个文件
-				hasPut = ftpClient.storeUniqueFile(remoteName, input);
-			} else {
-				hasPut = ftpClient.storeFile(remoteName, input);
-			}
-			// 异常检查
-			FTPExceptionUtils.assertPut(hasPut, ftpFileName);
-			return true;
+			// 根据指定的名字和输入流InputStream向服务器上传一个文件
+			result.setResult(ftpClient.storeFile(renamedName, input));
+			
+			return result;
 		} finally {
-			// 恢复起始位
-			ftpClient.setRestartOffset(0);
-			// 关闭输入流
+			// 关闭输入通道
 			IOUtils.closeQuietly(input);
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
 		}
 	}
 	
-	public static boolean storeStream(FTPClient ftpClient, String ftpDir, String ftpFileName, InputStream input)
+	/**
+	 * 
+	 * <p> 根据给定的名字返回一个能够向服务器上传文件的OutputStream</p>
+	 * <p> ftpClient.storeUniqueFileStream(String remote) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param fileName		：文件名称 
+	 * @return
+	 * @throws IOException
+	 */
+	public static OutputStream storeFileStream(FTPClient ftpClient, String fileName) throws IOException {
+		// 获得OutputStream
+		return FTPClientUtils.storeFileStream(ftpClient, fileName, true);
+	}
+	
+	/**
+	 * 
+	 * <p> 根据给定的名字返回一个能够向服务器上传文件的OutputStream，根据unique参数采用不同的方法：</p>
+	 * <p> ftpClient.storeUniqueFileStream(String remote) </p>
+	 * <p> ftpClient.storeFileStream(String remote) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param fileName		：文件名称
+	 * @param unique		：文件是否唯一  
+	 * @return
+	 * @throws IOException
+	 */
+	public static OutputStream storeFileStream(FTPClient ftpClient, String fileName, boolean unique)
 			throws IOException {
+		// 带缓冲的输出流
+		OutputStream buffOutput = null;
+		// 返回一个输出流OutputStream,以便向服务器写入一个文件，该文件由用户自己指定
+		if (unique) {
+			buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeUniqueFileStream(fileName),
+					ftpClient.getBufferSize());
+		} else {
+			buffOutput = IOUtils.toBufferedOutputStream(ftpClient.storeFileStream(fileName),
+					ftpClient.getBufferSize());
+		}
+		// 获得OutputStream
+		return FTPStreamUtils.toWrapedOutputStream(buffOutput, ftpClient);
+	}
+	
+	/**
+	 * 
+	 * 上传文件至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、调用方法： ftpClient.storeUniqueFile(remote, local)</p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param localFile		：本地文件
+	 * @return {@link FTPStoreResult} 上传结果
+	 * @throws IOException
+	 */
+	public static FTPStoreResult storeUniqueFile(FTPClient ftpClient, File localFile) throws IOException {
+		return storeFile(ftpClient, localFile, true);
+	}
+	
+	/**
+	 * 
+	 * 上传输入流至FTP服务器
+	 * <p> 1、采用方法： ftpClient.storeUniqueFile(local) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param input			： 输入流
+	 * @return
+	 * @throws IOException
+	 */
+	public static boolean storeUniqueFile(FTPClient ftpClient, InputStream input) throws IOException {
+		
+		// 参数检查
+		Assert.notNull(input, "The input must not be null.");
+		
+		try {
+			
+			// 包装文件输入流
+			input = IOUtils.toBufferedInputStream(input, ftpClient.getBufferSize());
+			// 根据指定的名字和输入流InputStream向服务器上传一个文件
+			return ftpClient.storeUniqueFile(input);
+			
+		} finally {
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+		}
+	}
+	
+	/**
+	 * 
+	 * 上传文件至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、调用方法： ftpClient.storeUniqueFile(remote, local)</p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：上传目录
+	 * @param localFile		：本地文件
+	 * @return {@link FTPStoreResult} 上传结果
+	 * @throws IOException
+	 */
+	public static FTPStoreResult storeUniqueFile(FTPClient ftpClient, String ftpDir, File localFile) throws IOException {
+		return storeFile(ftpClient, ftpDir, localFile, true);
+	}
+	
+	/**
+	 * 
+	 * 上传输入流至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、采用方法： ftpClient.storeUniqueFile(remote, local) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param fileName		：文件名称 
+	 * @param input			： 输入流
+	 * @return
+	 * @throws IOException
+	 */
+	public static FTPStoreResult storeUniqueFile(FTPClient ftpClient, String fileName, InputStream input) throws IOException {
+		try {
+			
+			// 参数检查
+			Assert.notNull(fileName, "The fileName must not be null.");
+			Assert.notNull(input, "The input must not be null.");
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("local : fileName = {0} ", fileName);
+			String renamedName = ftpClient.getFileRenamePolicy().rename(fileName);
+			LOG.debug("rename : fileName = {0}, path = {1}", renamedName);
+			
+			result.setLength(input.available());
+			result.setOriginalName(fileName);
+			result.setRenamedName(renamedName);
+			
+			// 包装文件输入流
+			input = IOUtils.toBufferedInputStream(input, ftpClient.getBufferSize());
+			// 根据指定的名字和输入流InputStream向服务器上传一个文件
+			result.setResult(ftpClient.storeUniqueFile(renamedName, input));
+			
+			return result;
+			
+		} finally {
+			// 关闭输入通道
+			IOUtils.closeQuietly(input);
+		}
+	}
+	
+	/**
+	 * 上传输入流至FTP服务器
+	 * <p> 1、使用重命名策略进行文件名重命名</p>
+	 * <p> 2、采用方法： ftpClient.storeUniqueFile(remote, local) </p>
+	 * @param ftpClient		： FTPClient对象
+	 * @param ftpDir		：文件目录
+	 * @param fileName		：文件名称
+	 * @param input			：输入流
+	 * @return
+	 * @throws IOException
+	 */
+	public static FTPStoreResult storeUniqueFile(FTPClient ftpClient, String ftpDir, String fileName, InputStream input) throws IOException {
+		
+		// 参数检查
+		Assert.notNull(ftpDir, "The ftpDir must not be null.");
+		Assert.notNull(fileName, "The fileName must not be null.");
+		Assert.notNull(input, "The input must not be null.");
+		
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
+		
 		try {
+			
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+			
+			FTPStoreResult result = new FTPStoreResult();
+			
+			// 调用文件重命名策略构造新的文件: 重新命名后的文件
+			LOG.debug("local : fileName = {0} ", fileName);
+			String renamedName = ftpClient.getFileRenamePolicy().rename(fileName);
+			LOG.debug("rename : fileName = {0}, path = {1}", renamedName);
+			
+			result.setLength(input.available());
+			result.setOriginalName(fileName);
+			result.setRenamedName(renamedName);
+			
 			// 切换目录
 			boolean hasChanged = FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
-			// 将指定的输入流写入 FTP 站点上的一个指定文件
-			return FTPClientUtils.storeStream(ftpClient, ftpFileName, input);
+			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			
+			// 将指定的输入流写入 FTP 站点上的一个指定文件 ; 包装文件输入流
+			input = IOUtils.toBufferedInputStream(input, ftpClient.getBufferSize());
+			// 根据指定的名字和输入流InputStream向服务器上传一个文件
+			result.setResult(ftpClient.storeUniqueFile(renamedName, input));
+			
+			return result;
 		} finally {
 			// 关闭输入通道
 			IOUtils.closeQuietly(input);
@@ -1773,56 +2189,30 @@ public class FTPClientUtils {
 	
 	/**
 	 * 
-	 * <p> 上传输入流至FTP服务器，根据服务端是否已有文件采用不同的方法：</p>
-	 * <p> ftpClient.storeFile(remote, local)</p>
-	 * <p> ftpClient.appendFile(remote, local)</p>
-	 * @param ftpClient		： FTPClient对象
-	 * @param ftpDir		：上传目录
-	 * @param ftpFileName	：文件名称
-	 * @param input			：输入流
-	 * @param delIfExists	：如果文件存在是否删除
+	 * 根据给定的名字返回一个能够向服务器上传文件的OutputStream
+	 * <p> 调用方法：ftpClient.storeUniqueFileStream(String remote) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param fileName		：文件名称 
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean storeStream(FTPClient ftpClient, String ftpDir, String ftpFileName, InputStream input,
-			boolean delIfExists) throws IOException {
-		return FTPClientUtils.storeStream(ftpClient, ftpDir, ftpFileName, input, delIfExists, false);
+	public static OutputStream storeUniqueFileStream(FTPClient ftpClient, String fileName) throws IOException {
+		return storeFileStream(ftpClient, fileName, true);
 	}
 	
 	/**
 	 * 
-	 * <p> 上传输入流至FTP服务器，根据服务端是否已有文件采用不同的方法：</p>
-	 * <p> ftpClient.storeUniqueFile(remote, local)</p>
-	 * <p> ftpClient.storeFile(remote, local)</p>
-	 * <p> ftpClient.appendFile(remote, local)</p>
-	 * @param ftpClient		： FTPClient对象
-	 * @param ftpDir		：上传目录
-	 * @param ftpFileName	：文件名称
-	 * @param input			：输入流
-	 * @param delIfExists	：如果文件存在是否删除
-	 * @param unique		：是否文件唯一，该参数决定使用那种方法进行上传操作
+	 * 根据给定的名字返回一个能够向服务器上传文件的OutputStream
+	 * <p> 调用方法：ftpClient.storeUniqueFileStream(String remote) </p>
+	 * @param ftpClient		：FTPClient对象
+	 * @param ftpDir		：文件目录
+	 * @param fileName		：文件名称 
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean storeStream(FTPClient ftpClient, String ftpDir, String ftpFileName, InputStream input,
-			boolean delIfExists, boolean unique) throws IOException {
-		// FTP服务根文件目录
-		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
-		try {
-			// 切换目录
-			boolean hasChanged = FTPClientUtils.changeExistsDirectory(ftpClient, ftpDir);
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
-			// 将指定的输入流写入 FTP 站点上的一个指定文件
-			return FTPClientUtils.storeStream(ftpClient, ftpFileName, input, delIfExists, unique);
-		} finally {
-			// 关闭输入通道
-			IOUtils.closeQuietly(input);
-			// 切换目录至根目录
-			ftpClient.changeWorkingDirectory(rootDir);
-		}
+	public static OutputStream storeUniqueFileStream(FTPClient ftpClient, String ftpDir, String fileName)
+			throws IOException {
+		return storeFileStream(ftpClient, ftpDir, fileName, true);
 	}
 	
 }

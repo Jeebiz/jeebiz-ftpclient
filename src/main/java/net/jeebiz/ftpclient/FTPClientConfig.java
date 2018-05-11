@@ -8,16 +8,18 @@ import java.net.Proxy;
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.net.ftp.parser.FTPFileEntryParserFactory;
 import org.apache.commons.net.io.CopyStreamListener;
 
-import net.jeebiz.ftpclient.enums.FTPClientTypeEnum;
 import net.jeebiz.ftpclient.enums.FTPServerTypeEnum;
 import net.jeebiz.ftpclient.enums.FileFormatEnum;
 import net.jeebiz.ftpclient.enums.FileStructureEnum;
 import net.jeebiz.ftpclient.enums.FileTransferModeEnum;
-import net.jeebiz.ftpclient.enums.FileTypeEnum;
+import net.jeebiz.ftpclient.enums.FileTransferTypeEnum;
 import net.jeebiz.ftpclient.io.CopyStreamProcessListener;
+import net.jeebiz.ftpclient.rename.FileRenamePolicy;
+import net.jeebiz.ftpclient.rename.UUIDFileRenamePolicy;
 
 /**
  * FTP客户端的配置
@@ -80,8 +82,6 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 	protected int channelWriteBufferSize = DEFAULT_CHANNEL_SIZE;
 	/** Socket使用的字符集;默认UTF-8 */
 	protected String charset = "UTF-8";
-	/** ftp客户端对象类型：FTPClient,FTPSClient,FTPHTTPClient;默认 FTPClient */
-	protected FTPClientTypeEnum clientType = FTPClientTypeEnum.FTP_CLIENT;
 	/** 连接超时时间，单位为秒，默认30秒 */
 	protected int connectTimeout = DEFAULT_CONNECT_TIMEOUT;
 	/** 服务端编码格式;默认ISO-8859-1 */
@@ -101,12 +101,16 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 	
 	/** 文件格式：telnet,carriage_control,non_print */
 	protected FileFormatEnum fileFormat = FileFormatEnum.NON_PRINT_TEXT;
+	/** 文件重命名规则：默认 {@link UUIDFileRenamePolicy} */
+	protected FileRenamePolicy fileRenamePolicy = new UUIDFileRenamePolicy();
+	/** 文件重命名规则对象类路径 */
+    protected String fileRenamePolicyName;
 	/** 文件结构：file,record,page */
 	protected FileStructureEnum fileStructure = FileStructureEnum.FILE;
 	/** 文件传输模式 ：stream,block,compressed */
 	protected FileTransferModeEnum fileTransferMode = FileTransferModeEnum.STREAM;
 	/** 文件传输类型：ascii,ebcdic,binary,local;默认 binary;注：用FTPClient部署在Linux上出现下载的文件小于FTP服务器实际文件的问题解决方法是设置以二进制形式传输 */
-	protected FileTypeEnum fileType = FileTypeEnum.BINARY;
+	protected FileTransferTypeEnum fileType = FileTransferTypeEnum.BINARY;
 	/** ftp服务器显示风格 一般为unix 或者nt */
 	protected FTPServerTypeEnum serverType = FTPServerTypeEnum.UNIX;
 	/** 表示TCP是否监视连接是否有效,值为 false时不活动的客户端可能会永远存在下去, 而不会注意到服务器已经崩溃.默认值为 false 
@@ -117,6 +121,10 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 	protected boolean keepAlive = false;
 	/** 是否获取隐藏文件，如果想获得隐藏的文件则需要设置为true,默认false  */
 	protected boolean listHiddenFiles = false;
+	/** 是否本地备份上传的文件：该方式有助于提高文件服务可用性，为用户下载文件省去网络开销 */
+	protected boolean localBackupAble = false;
+	/** 本地备份路径 ;默认userdir,如果开启了本地备份功能，建议指定该目录地址 */
+	protected String localBackupDir = SystemUtils.getUserDir().getAbsolutePath();
 	/** 是否本地主动模式 ;默认 true */
 	protected boolean localActiveMode = false;
 	/** 本地编码格式 ;默认GBK */
@@ -210,6 +218,102 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 	 * 在这种情况下，PASV命令后，数据连接会失败，而EPSV将使客户获得成功，采取公正的端口。
 	 */
 	protected boolean useEPSVwithIPv4 = false;
+	
+	/**
+	 * Convenience constructor mainly for use in testing. Constructs a UNIX
+	 * configuration.
+	 */
+	public FTPClientConfig() {
+		super();
+	}
+
+	/**
+	 * The main constructor for an FTPClientConfig object
+	 * 
+	 * @param systemKey
+	 *            key representing system type of the server being connected to. See
+	 *            {@link #getServerSystemKey() serverSystemKey} If set to the empty
+	 *            string, then FTPClient uses the system type returned by the
+	 *            server. However this is not recommended for general use; the
+	 *            correct system type should be set if it is known.
+	 */
+	public FTPClientConfig(String systemKey) {
+		super(systemKey);
+	}
+
+	/**
+	 * Constructor which allows setting of the format string member fields
+	 * 
+	 * @param systemKey
+	 *            key representing system type of the server being connected to. See
+	 *            {@link #getServerSystemKey() serverSystemKey}
+	 * @param defaultDateFormatStr
+	 *            See {@link #setDefaultDateFormatStr(String) defaultDateFormatStr}
+	 * @param recentDateFormatStr
+	 *            See {@link #setRecentDateFormatStr(String) recentDateFormatStr}
+	 */
+	public FTPClientConfig(String systemKey, String defaultDateFormatStr, String recentDateFormatStr) {
+		super(systemKey, defaultDateFormatStr, recentDateFormatStr);
+	}
+
+	/**
+	 * Constructor which allows setting of most member fields
+	 * 
+	 * @param systemKey
+	 *            key representing system type of the server being connected to. See
+	 *            {@link #getServerSystemKey() serverSystemKey}
+	 * @param defaultDateFormatStr
+	 *            See {@link #setDefaultDateFormatStr(String) defaultDateFormatStr}
+	 * @param recentDateFormatStr
+	 *            See {@link #setRecentDateFormatStr(String) recentDateFormatStr}
+	 * @param serverLanguageCode
+	 *            See {@link #setServerLanguageCode(String) serverLanguageCode}
+	 * @param shortMonthNames
+	 *            See {@link #setShortMonthNames(String) shortMonthNames}
+	 * @param serverTimeZoneId
+	 *            See {@link #setServerTimeZoneId(String) serverTimeZoneId}
+	 */
+	public FTPClientConfig(String systemKey, String defaultDateFormatStr, String recentDateFormatStr,
+			String serverLanguageCode, String shortMonthNames, String serverTimeZoneId) {
+		super(systemKey, defaultDateFormatStr, recentDateFormatStr, serverLanguageCode, shortMonthNames,
+				serverTimeZoneId);
+	}
+
+	/**
+	 * Constructor which allows setting of all member fields
+	 * 
+	 * @param systemKey
+	 *            key representing system type of the server being connected to. See
+	 *            {@link #getServerSystemKey() serverSystemKey}
+	 * @param defaultDateFormatStr
+	 *            See {@link #setDefaultDateFormatStr(String) defaultDateFormatStr}
+	 * @param recentDateFormatStr
+	 *            See {@link #setRecentDateFormatStr(String) recentDateFormatStr}
+	 * @param serverLanguageCode
+	 *            See {@link #setServerLanguageCode(String) serverLanguageCode}
+	 * @param shortMonthNames
+	 *            See {@link #setShortMonthNames(String) shortMonthNames}
+	 * @param serverTimeZoneId
+	 *            See {@link #setServerTimeZoneId(String) serverTimeZoneId}
+	 * @param lenientFutureDates
+	 *            See {@link #setLenientFutureDates(boolean) lenientFutureDates}
+	 * @param saveUnparseableEntries
+	 *            See {@link #setUnparseableEntries(boolean) saveUnparseableEntries}
+	 */
+	public FTPClientConfig(String systemKey, String defaultDateFormatStr, String recentDateFormatStr,
+			String serverLanguageCode, String shortMonthNames, String serverTimeZoneId, boolean lenientFutureDates,
+			boolean saveUnparseableEntries) {
+		super(systemKey, defaultDateFormatStr, recentDateFormatStr, serverLanguageCode, shortMonthNames,
+				serverTimeZoneId, lenientFutureDates, saveUnparseableEntries);
+	}
+
+	/**
+	 * Copy constructor
+	 * @param config source
+	 */
+	public FTPClientConfig(FTPClientConfig config) {
+		super(config);
+	}
 	
 	public String getHost() {
 		return host;
@@ -339,14 +443,6 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 		this.charset = charset;
 	}
 
-	public FTPClientTypeEnum getClientType() {
-		return clientType;
-	}
-
-	public void setClientType(FTPClientTypeEnum clientType) {
-		this.clientType = clientType;
-	}
-
 	public int getConnectTimeout() {
 		return connectTimeout;
 	}
@@ -419,6 +515,22 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 	public void setFileFormat(FileFormatEnum fileFormat) {
 		this.fileFormat = fileFormat;
 	}
+	
+	public FileRenamePolicy getFileRenamePolicy() {
+		return fileRenamePolicy;
+	}
+
+	public void setFileRenamePolicy(FileRenamePolicy fileRenamePolicy) {
+		this.fileRenamePolicy = fileRenamePolicy;
+	}
+
+	public String getFileRenamePolicyName() {
+		return fileRenamePolicyName;
+	}
+
+	public void setFileRenamePolicyName(String fileRenamePolicyName) {
+		this.fileRenamePolicyName = fileRenamePolicyName;
+	}
 
 	public FileStructureEnum getFileStructure() {
 		return fileStructure;
@@ -436,11 +548,11 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 		this.fileTransferMode = fileTransferMode;
 	}
 
-	public FileTypeEnum getFileType() {
+	public FileTransferTypeEnum getFileType() {
 		return fileType;
 	}
 
-	public void setFileType(FileTypeEnum fileType) {
+	public void setFileType(FileTransferTypeEnum fileType) {
 		this.fileType = fileType;
 	}
 
@@ -466,6 +578,22 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 
 	public void setListHiddenFiles(boolean listHiddenFiles) {
 		this.listHiddenFiles = listHiddenFiles;
+	}
+	
+	public boolean isLocalBackupAble() {
+		return localBackupAble;
+	}
+
+	public void setLocalBackupAble(boolean localBackupAble) {
+		this.localBackupAble = localBackupAble;
+	}
+
+	public String getLocalBackupDir() {
+		return localBackupDir;
+	}
+
+	public void setLocalBackupDir(String localBackupDir) {
+		this.localBackupDir = localBackupDir;
 	}
 
 	public boolean isLocalActiveMode() {

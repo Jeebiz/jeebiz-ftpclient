@@ -17,6 +17,7 @@ import org.apache.commons.net.io.ToNetASCIIOutputStream;
 import org.apache.commons.net.io.Util;
 
 import net.jeebiz.ftpclient.io.CopyStreamProcessListener;
+import net.jeebiz.ftpclient.rename.FileRenamePolicy;
 
 /**
  * 
@@ -32,6 +33,8 @@ public class FTPClient extends org.apache.commons.net.ftp.FTPClient {
 	protected static final int DEFAULT_CHANNEL_SIZE = 2 * 1024 * 1024;
 	// buffersize for buffered data streams
 	protected int bufferSize_ = DEFAULT_BUFFER_SIZE; 
+	// fileRenamePolicy
+	protected FileRenamePolicy fileRenamePolicy;
 	// file type
 	protected int fileType_;
     // Listener used by store/retrieve methods to handle keepalive
@@ -324,6 +327,14 @@ public class FTPClient extends org.apache.commons.net.ftp.FTPClient {
 		bufferSize_ = bufferSize;
 	}
 
+	public FileRenamePolicy getFileRenamePolicy() {
+		return fileRenamePolicy;
+	}
+
+	public void setFileRenamePolicy(FileRenamePolicy fileRenamePolicy) {
+		this.fileRenamePolicy = fileRenamePolicy;
+	}
+	
 	public int getFileType_() {
 		return fileType_;
 	}

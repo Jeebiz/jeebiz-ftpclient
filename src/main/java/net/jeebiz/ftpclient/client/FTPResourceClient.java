@@ -30,7 +30,6 @@ import net.jeebiz.ftpclient.utils.FTPConnectUtils;
  */
 public class FTPResourceClient implements IFTPClient{
 	
-	private ThreadLocal<FTPClient> clientThreadLocal = new ThreadLocal<FTPClient>();   
 	private FTPClientBuilder clientBuilder  = null;
 	
 	public FTPResourceClient(){
@@ -345,7 +344,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try { 
-			return FTPClientUtils.remove(ftpClient, ftpFileName);
+			return FTPClientUtils.deleteFile(ftpClient, ftpFileName);
 		} finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -357,7 +356,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try { 
-	        return FTPClientUtils.remove(ftpClient, ftpFiles);
+	        return FTPClientUtils.deleteFile(ftpClient, ftpFiles);
 		} finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -369,7 +368,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try { 
-			return FTPClientUtils.remove(ftpClient, ftpDir, ftpFileName);
+			return FTPClientUtils.deleteFile(ftpClient, ftpDir, ftpFileName);
 		} finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -381,7 +380,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try { 
-			return FTPClientUtils.remove(ftpClient, ftpDir, ftpFiles);
+			return FTPClientUtils.deleteFile(ftpClient, ftpDir, ftpFiles);
 		} finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -575,25 +574,20 @@ public class FTPResourceClient implements IFTPClient{
 		
 		Assert.notNull(clientBuilder, "The clientBuilder must not be null");
 		
-		if (clientThreadLocal.get() != null && clientThreadLocal.get().isConnected()) {  
-            return clientThreadLocal.get();  
-        } else {
-        	//构造一个FtpClient实例  
-        	FTPClient ftpClient = getClientBuilder().build();
-        	//FTP未连接
-    		if (!ftpClient.isConnected()) {
-    			FTPClientConfig clientConfig = clientBuilder.getClientConfig();
-    			//连接FTP服务器
-            	boolean isConnected = FTPConnectUtils.connect(ftpClient, clientConfig.getHost(), clientConfig.getPort(), clientConfig.getUsername(), clientConfig.getPassword());
-            	if(isConnected){
-    				//初始化已经与FTP服务器建立连接的FTPClient
-            		FTPConnectUtils.initConnectedSocket(ftpClient, clientConfig);
-    				FTPConnectUtils.initConnectionMode(ftpClient, clientConfig);
-    			}
-            }
-    		clientThreadLocal.set(ftpClient);
-    		return ftpClient;
+    	//构造一个FtpClient实例  
+    	FTPClient ftpClient = getClientBuilder().build();
+    	//FTP未连接
+		if (!ftpClient.isConnected()) {
+			FTPClientConfig clientConfig = clientBuilder.getClientConfig();
+			//连接FTP服务器
+        	boolean isConnected = FTPConnectUtils.connect(ftpClient, clientConfig.getHost(), clientConfig.getPort(), clientConfig.getUsername(), clientConfig.getPassword());
+        	if(isConnected){
+				//初始化已经与FTP服务器建立连接的FTPClient
+        		FTPConnectUtils.initConnectedSocket(ftpClient, clientConfig);
+				FTPConnectUtils.initConnectionMode(ftpClient, clientConfig);
+			}
         }
+		return ftpClient;
 	}
 	
 	@Override

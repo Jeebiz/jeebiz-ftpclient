@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPFileFilter;
 import org.apache.commons.net.ftp.FTPFileFilters;
@@ -27,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.jeebiz.ftpclient.FTPClient;
+import net.jeebiz.ftpclient.FTPClientConfig;
 import net.jeebiz.ftpclient.filefilter.FalseFileFilter;
 import net.jeebiz.ftpclient.filefilter.FileFileFilter;
 import net.jeebiz.ftpclient.filefilter.SuffixFileFilter;
@@ -223,6 +225,28 @@ public class FTPFileUtils {
         }
         return file.getTimestamp().getTimeInMillis() > timeMillis;
     }
-
+    
+    public static File tryBackup(final FTPClientConfig clientConfig, final File sourceFile) {
+    	// 是否开启本地备份功能
+    	if(clientConfig.isLocalBackupAble()) {
+    		try {
+    			
+    			File renameFile = new File(clientConfig.getLocalBackupDir(), renamedName);
+				FileUtils.copyFile(sourceFile, renameFile);
+				
+			} catch (IOException e) {
+				// 忽略失败的情况
+			}
+		} else {
+			try {
+				File renameFile = new File(sourceFile.getParentFile(), renamedName);
+				FileUtils.copyFile(sourceFile, renameFile);
+				return renameFile;
+			} catch (IOException e) {
+				// 忽略失败的情况
+			}
+			return sourceFile;
+		}
+    }
     
 }

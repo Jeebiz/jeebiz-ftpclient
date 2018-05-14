@@ -405,7 +405,7 @@ public class FTPResourceClient implements IFTPClient{
 		try {
 			// 包装字节输入流  
 			input = ByteArrayOutputStream.toBufferedInputStream(new ByteArrayInputStream(bytes));
-			return FTPClientUtils.storeUniqueFile(ftpClient, ftpFileName, input);
+			return FTPClientUtils.storeFile(ftpClient, ftpFileName, input);
         } finally {
         	//关闭输入流
         	IOUtils.closeQuietly(input);
@@ -422,7 +422,7 @@ public class FTPResourceClient implements IFTPClient{
 		try {
 			// 包装字节输入流  
 			input = ByteArrayOutputStream.toBufferedInputStream(new ByteArrayInputStream(bytes));
-			return FTPClientUtils.storeUniqueFile(ftpClient, ftpDir, ftpFileName, input);
+			return FTPClientUtils.storeFile(ftpClient, ftpDir, ftpFileName, input);
         } finally {
         	//关闭输入流
         	IOUtils.closeQuietly(input);
@@ -436,7 +436,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeUniqueFile(ftpClient, ftpFileName, localFile);
+			return FTPClientUtils.storeFile(ftpClient, ftpFileName, localFile);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -448,7 +448,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeUniqueFile(ftpClient, ftpDir, localFile);
+			return FTPClientUtils.storeFile(ftpClient, ftpDir, localFile);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -460,7 +460,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeUniqueFile(ftpClient,  ftpFileName, input);
+			return FTPClientUtils.storeFile(ftpClient,  ftpFileName, input);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -472,7 +472,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeUniqueFile(ftpClient, ftpDir, ftpFileName, input);
+			return FTPClientUtils.storeFile(ftpClient, ftpDir, ftpFileName, input);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -484,7 +484,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeFile(ftpClient, ftpFileName, new File(localFile), true);
+			return FTPClientUtils.storeFile(ftpClient, ftpFileName, new File(localFile));
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);

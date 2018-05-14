@@ -20,13 +20,11 @@ import net.jeebiz.ftpclient.io.CopyStreamProcessListener;
 import net.jeebiz.ftpclient.rename.FileRenamePolicy;
 
 /**
- * 
- * @className	： FTPClient
- * @description	：继承扩展org.apache.commons.net.ftp.FTPClient，实现根据配置自定义是否实时刷新
- * @author 		： <a href="mailto:hnxyhcwdl1003@163.com">wandalong</a>
- * @date		： Jan 13, 2016 1:50:45 PM
+ * 继承扩展org.apache.commons.net.ftp.FTPClient，实现根据配置自定义是否实时刷新
+ * @author <a href="https://github.com/vindell">vindell</a>
  */
 public class FTPClient extends org.apache.commons.net.ftp.FTPClient {
+	
 	/** The default buffer size： 8M*/
 	protected static final int DEFAULT_BUFFER_SIZE = 8 * 1024 * 1024;
 	/** The default buffer size of FileChannel： 2M*/

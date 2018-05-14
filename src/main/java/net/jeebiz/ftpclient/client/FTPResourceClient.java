@@ -23,6 +23,7 @@ import net.jeebiz.ftpclient.FTPClientConfig;
 import net.jeebiz.ftpclient.utils.Assert;
 import net.jeebiz.ftpclient.utils.FTPClientUtils;
 import net.jeebiz.ftpclient.utils.FTPConnectUtils;
+import net.jeebiz.ftpclient.utils.FTPStoreResult;
 
 /**
  * 基于ThreadLocal多线程对象复用的FTPClient资源服务客户端实现
@@ -60,21 +61,6 @@ public class FTPResourceClient implements IFTPClient{
 			//在当前工作目录下新建子目录
 	        return FTPClientUtils.makeDirectory(ftpClient, parentDir, targetDir);
 		} finally {
-			//释放连接  
-			releaseClient(ftpClient);
-        }
-	}
-	
-	public void downloadToDir(String ftpDir,String localDir) throws Exception{
-		this.downloadToDir(ftpDir, new File(localDir));
-	}
-	
-	public void downloadToDir(String ftpDir,File localDir) throws Exception{
-		//获得一个活动连接的FTPClient
-		FTPClient ftpClient = getFTPClient();
-		try {
-			FTPClientUtils.retrieveToDir(ftpClient, ftpDir, localDir);
-        } finally {
 			//释放连接  
 			releaseClient(ftpClient);
         }
@@ -200,7 +186,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			FTPClientUtils.retrieveToResponse(ftpClient, ftpDir, ftpFileName, response);
+			FTPClientUtils.retrieveToStream(ftpClient, ftpDir, ftpFileName, response.getOutputStream());
         } finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -212,7 +198,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			FTPClientUtils.retrieveToResponse(ftpClient, ftpFileName, response);
+			FTPClientUtils.retrieveToStream(ftpClient, ftpFileName, response.getOutputStream());
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -260,7 +246,7 @@ public class FTPResourceClient implements IFTPClient{
 		FTPClient ftpClient = getFTPClient();
 		try {
 			//
-			return FTPClientUtils.getInputStream(ftpClient, ftpDir, ftpFileName, 0);
+			return FTPClientUtils.retrieveFileStream(ftpClient, ftpDir, ftpFileName, 0);
 		} finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -344,7 +330,7 @@ public class FTPResourceClient implements IFTPClient{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try { 
-			return FTPClientUtils.deleteFile(ftpClient, ftpFileName);
+			return FTPClientUtils.deleteFile(ftpClient, new String[] { ftpFileName });
 		} finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -412,14 +398,14 @@ public class FTPResourceClient implements IFTPClient{
 	}
 
 	@Override
-	public boolean upload(byte[] bytes,String ftpFileName) throws Exception{
+	public FTPStoreResult upload(byte[] bytes,String ftpFileName) throws Exception{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		InputStream input = null;
 		try {
 			// 包装字节输入流  
 			input = ByteArrayOutputStream.toBufferedInputStream(new ByteArrayInputStream(bytes));
-			return FTPClientUtils.storeStream(ftpClient, ftpFileName, input, true);
+			return FTPClientUtils.storeUniqueFile(ftpClient, ftpFileName, input);
         } finally {
         	//关闭输入流
         	IOUtils.closeQuietly(input);
@@ -429,14 +415,14 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean upload(byte[] bytes ,String ftpDir,String ftpFileName) throws Exception{
+	public FTPStoreResult upload(byte[] bytes ,String ftpDir,String ftpFileName) throws Exception{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		InputStream input = null;
 		try {
 			// 包装字节输入流  
 			input = ByteArrayOutputStream.toBufferedInputStream(new ByteArrayInputStream(bytes));
-			return FTPClientUtils.storeStream(ftpClient, ftpDir, ftpFileName, input, true);
+			return FTPClientUtils.storeUniqueFile(ftpClient, ftpDir, ftpFileName, input);
         } finally {
         	//关闭输入流
         	IOUtils.closeQuietly(input);
@@ -446,11 +432,11 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean upload(File localFile,String ftpFileName) throws Exception {
+	public FTPStoreResult upload(File localFile,String ftpFileName) throws Exception {
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeFile(ftpClient, ftpFileName, localFile, true);
+			return FTPClientUtils.storeUniqueFile(ftpClient, ftpFileName, localFile);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -458,11 +444,11 @@ public class FTPResourceClient implements IFTPClient{
 	}
 
 	@Override
-	public boolean upload(File localFile,String ftpDir,String ftpFileName) throws Exception {
+	public FTPStoreResult upload(File localFile,String ftpDir,String ftpFileName) throws Exception {
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeFile(ftpClient, ftpDir, ftpFileName, localFile, true);
+			return FTPClientUtils.storeUniqueFile(ftpClient, ftpDir, localFile);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -470,11 +456,11 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean upload(InputStream input,String ftpFileName) throws Exception {
+	public FTPStoreResult upload(InputStream input,String ftpFileName) throws Exception {
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeStream(ftpClient,  ftpFileName, input, true);
+			return FTPClientUtils.storeUniqueFile(ftpClient,  ftpFileName, input);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -482,11 +468,11 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean upload(InputStream input,String ftpDir,String ftpFileName) throws Exception {
+	public FTPStoreResult upload(InputStream input,String ftpDir,String ftpFileName) throws Exception {
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeStream(ftpClient, ftpDir, ftpFileName, input, true);
+			return FTPClientUtils.storeUniqueFile(ftpClient, ftpDir, ftpFileName, input);
         } finally {
         	//释放连接  
 			releaseClient(ftpClient);
@@ -494,7 +480,7 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean upload(String localFile,String ftpFileName) throws Exception {
+	public FTPStoreResult upload(String localFile,String ftpFileName) throws Exception {
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
@@ -506,12 +492,12 @@ public class FTPResourceClient implements IFTPClient{
 	}
 
 	@Override
-	public boolean upload(String localFile,String ftpDir,String ftpFileName) throws Exception {
+	public FTPStoreResult upload(String localFile,String ftpDir,String ftpFileName) throws Exception {
 		return this.upload(new File(localFile) ,ftpDir, ftpFileName );
 	}
 	
 	@Override
-	public boolean upload(StringBuilder fileContent ,String ftpFileName) throws Exception {
+	public FTPStoreResult upload(StringBuilder fileContent ,String ftpFileName) throws Exception {
 		StringReader reader = null;
 		try {
 			reader = new StringReader(fileContent.toString());
@@ -523,7 +509,7 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean upload(StringBuilder fileContent,String ftpDir, String ftpFileName) throws Exception {
+	public FTPStoreResult upload(StringBuilder fileContent,String ftpDir, String ftpFileName) throws Exception {
 		StringReader reader = null;
 		try {
 			reader = new StringReader(fileContent.toString());
@@ -535,11 +521,11 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean uploadByChannel(File localFile,String ftpFileName) throws Exception{
+	public FTPStoreResult uploadByChannel(File localFile,String ftpFileName) throws Exception{
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeFileChannel(ftpClient, localFile, ftpFileName);
+			return FTPClientUtils.storeFileChannel(ftpClient, ftpFileName, localFile);
         } finally {
 			//释放连接  
 			releaseClient(ftpClient);
@@ -547,11 +533,11 @@ public class FTPResourceClient implements IFTPClient{
 	}
 	
 	@Override
-	public boolean uploadByChannel(File localFile,String ftpDir,String ftpFileName) throws Exception {
+	public FTPStoreResult uploadByChannel(File localFile,String ftpDir,String ftpFileName) throws Exception {
 		//获得一个活动连接的FTPClient
 		FTPClient ftpClient = getFTPClient();
 		try {
-			return FTPClientUtils.storeFileChannel(ftpClient, localFile, ftpDir, ftpFileName);
+			return FTPClientUtils.storeFileChannel(ftpClient, localFile);
         } finally {
 			//释放连接  
 			releaseClient(ftpClient);

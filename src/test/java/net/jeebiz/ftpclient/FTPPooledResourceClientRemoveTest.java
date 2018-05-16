@@ -19,8 +19,6 @@ public class FTPPooledResourceClientRemoveTest extends FTPPooledResourceClientTe
  			ftpClient.remove("20063586", "tst.mp4");
  			ftpClient.remove("20063586",new String[]{"tst1.txt","tst2.mp4","tst1.mp4"});
  			ftpClient.removeDir("20063586/20160118");
- 			ftpClient.removeDir("20063586/20160118", false);
- 			ftpClient.removeDir("20063586/20160118", true);
  		} catch (Exception e) {
  			e.printStackTrace();
  		} 

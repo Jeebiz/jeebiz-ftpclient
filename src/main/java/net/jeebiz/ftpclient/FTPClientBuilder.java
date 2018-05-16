@@ -20,6 +20,7 @@ public class FTPClientBuilder implements Builder<FTPClient> {
 	public FTPClient build() {
 		//普通的FTPClient
 		FTPClient ftpClient = new FTPClient();
+		ftpClient.setClientConfig(getClientConfig());
 		//初始化FTPClient
 		return FTPClientUtils.initFTPClient(ftpClient, clientConfig);
 	}

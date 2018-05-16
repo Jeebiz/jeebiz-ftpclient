@@ -16,7 +16,7 @@ public class FTPResourceClientDownloadTest extends FTPResourceClientTest {
  		try {
  			File localFile = new File("E:\\第九套广播体操.mp4");
  			
- 			ftpClient.upload(localFile,"20063586",localFile.getName());
+ 			ftpClient.upload(localFile,"20063586");
  			
  			/*ftpClient.upload(new StringBuilder(fileContent),"tst1.txt");
  			ftpClient.upload(new StringBuilder(fileContent),"20063586/20160118","tst2.txt");

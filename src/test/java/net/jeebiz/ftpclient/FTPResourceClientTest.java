@@ -35,14 +35,14 @@ public class FTPResourceClientTest extends FTPClientTest {
 		// ftp服务器密码
 		clientConfig.setPassword("123456");
 		// ftp服务器根路径
-		clientConfig.setRootdir("/u01/wwwroot/zftal-kod/data/Group/public/home/share/");
+		clientConfig.setRootdir("/");
 		
 		// 在主动模式下的外部IP地址
-		clientConfig.setActiveExternalHost("192.168.1.100");
+		//clientConfig.setActiveExternalHost("192.168.1.100");
 		// 在主动模式客户端最大端口
-		clientConfig.setActiveMaxPort(25100);
+		//clientConfig.setActiveMaxPort(25100);
 		// 在主动模式客户端起始端口
-		clientConfig.setActiveMinPort(25000);
+		//clientConfig.setActiveMinPort(25000);
 		// 启用或禁用服务器自动编码检测（只支持UTF-8支持）;默认false 
 		clientConfig.setAutodetectUTF8(false);
 		// 启用或禁用数据流方式上传/下载时是否在缓冲发送/接收完成自动刷新缓存区；大文件上传下载时比较有用;默认false
@@ -56,7 +56,7 @@ public class FTPResourceClientTest extends FTPClientTest {
 		// 文件通道写出缓冲区大小;默认 2M
 		clientConfig.setChannelWriteBufferSize(2 * 1024 * 1024);
 		// Socket使用的字符集;默认UTF-8
-		clientConfig.setCharset("GBK");
+		clientConfig.setCharset("UTF-8");
 		// 连接超时时间，单位为毫秒，默认30000毫秒
 		clientConfig.setConnectTimeout(30 * 1000);
 		// 服务端编码格式;默认ISO-8859-1
@@ -76,7 +76,7 @@ public class FTPResourceClientTest extends FTPClientTest {
 		clientConfig.setFileFormat(FileFormatEnum.TELNET_TEXT);
 		// 文件重命名规则：默认 {@link UUIDFileRenamePolicy}
 		clientConfig.setFileRenamePolicy(new UUIDFileRenamePolicy());
-		clientConfig.setFileRenamePolicyName("net.jeebiz.ftpclient.bakup.UUIDFileRenamePolicy");
+		clientConfig.setFileRenamePolicyName("net.jeebiz.ftpclient.rename.UUIDFileRenamePolicy");
 		// 文件结构：file,record,page
 		clientConfig.setFileStructure(FileStructureEnum.FILE);
 		// 文件传输模式 ：stream,block,compressed
@@ -105,9 +105,9 @@ public class FTPResourceClientTest extends FTPClientTest {
 		// 用于创建FTPFileEntryParser对象的工厂
 		clientConfig.setParserFactory(new DefaultFTPFileEntryParserFactory());
 		// 被动模式下使用的本地IP地址
-		clientConfig.setPassiveLocalHost("192.168.31.1");
+		//clientConfig.setPassiveLocalHost("192.168.31.1");
 		// 启用或禁用在被动模式下使用NAT（Network Address Translation，网络地址转换）解决方案。默认true
-		clientConfig.setPassiveNatWorkaround(true);
+		clientConfig.setPassiveNatWorkaround(false);
 		// 是否打印出FTP命令，默认 true
 		clientConfig.setPrintDebug(true);
 		/*
@@ -122,15 +122,15 @@ public class FTPResourceClientTest extends FTPClientTest {
 		 *  使用ping命令可以得到一次RTT时间，也就是2倍延迟，那么 buffer size = RTT * bandwidth
 		 *  继续上面例子，ping返回的值为80ms，所以TCP缓冲区大小应该为 0.08s * 100Mbps / 8 = 1MByte
 		 */
-		clientConfig.setReceiveBufferSize(8 * 1024);
+		clientConfig.setReceiveBufferSize(32 * 1024);
 		// FTPClient接收数据的缓冲区大小,默认是8KB.
 		clientConfig.setReceiveDataSocketBufferSize(8 * 1024);
 		// 配置解析器用于解析文件最近修改时间戳的日期格式。 如果未指定，则此类解析器将用作默认值，这是en_US语言环境中使用的最常用格式。
-		clientConfig.setRecentDateFormatStr("yyyy-MM-dd HH:mm:SSS");
+		//clientConfig.setRecentDateFormatStr("yyyy-MM-dd HH:mm:SSS");
 		// 远程被动模式远程端IP地址 
-		clientConfig.setRemoteActiveHost(null);
+		//clientConfig.setRemoteActiveHost(null);
 		// 远程被动模式远程端端口
-		clientConfig.setRemoteActivePort(21);
+		//clientConfig.setRemoteActivePort(21);
 		/* 是否远程被动模式 ;默认 false; 仅用于服务器到服务器的数据传输此方法。
 		 * 这种方法发出PASV命令到服务器，告诉它打开一个数据端口的活动服务器将连接进行数据传输。 您必须调用这个摆在每一个服务器到服务器传输尝试的方法。
 		 * 该FTPClient不会自动继续发行PASV命令。 你还必须记住调用enterLocalActiveMode()如果你想返回到正常的数据连接模式。
@@ -166,7 +166,7 @@ public class FTPResourceClientTest extends FTPClientTest {
 		// Socket创建工厂
 		clientConfig.setSocketFactory(DefaultSocketFactory.getDefault());
 		// Socket代理对象
-		clientConfig.setSocketProxy(Proxy.NO_PROXY);
+		//clientConfig.setSocketProxy(Proxy.NO_PROXY);
 		// Socket关闭后，SO_LINGER 延迟关闭时间;单位毫秒，默认0
 		clientConfig.setSolinger_timeout(0);
 		// 启用/禁用SO_LINGER延迟关闭

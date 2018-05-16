@@ -17,6 +17,7 @@ import java.util.List;
 
 import javax.net.ssl.SSLSocketFactory;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
@@ -356,39 +357,80 @@ public class FTPClientUtils {
 		return hasChanged;
 	}
 
-	public static FTPFile getFTPFile(FTPClient ftpClient, String fileName) throws IOException {
-		ftpClient.listFiles(null, new NameFileFilter(fileName));
+	public static FTPFile getFTPFile(FTPClient ftpClient, String pathname) throws IOException {
 		
-		// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
-		FTPFile[] files = ftpClient.listFiles(FTPStringUtils.getRemoteName(ftpClient, fileName));
-		// 异常检查
-		FTPExceptionUtils.assertFile(files, fileName);
-		FTPFile fileTmp = files[0];
-		// 异常检查
-		FTPExceptionUtils.assertFile(fileTmp, fileName);
-		return fileTmp;
+		// 参数检查
+		Assert.notNull(pathname, "The pathname must not be null.");
+		
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		// 切换目录至根目录
+		ftpClient.changeWorkingDirectory(rootDir);
+		try {
+			// 采用直接获取方式进行获取
+			FTPFile[] files = ftpClient.listFiles(pathname, new NameFileFilter(pathname));
+			if(files != null && files.length > 0) {
+				FTPFile file = files[0];
+				file.setName(FilenameUtils.getName(file.getName()));
+				return file;
+			}
+			// 没能获取到，尝试进行目录切换
+			String ftpDir = FilenameUtils.getPathNoEndSeparator(pathname);
+			if(StringUtils.isNotBlank(ftpDir)) {
+				// 切换目录
+				boolean hasChanged = changeDirectory(ftpClient, ftpDir);
+				Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
+			}
+			
+			String fileName = FilenameUtils.getName(pathname);
+			files = ftpClient.listFiles();
+			if(files != null && files.length > 0) {
+				NameFileFilter filter  = new NameFileFilter(fileName);
+				for (FTPFile ftpFile : files) {
+					if(filter.accept(ftpFile)) {
+						return ftpFile;
+					}
+				}
+			}
+			return null;
+		} finally {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
+		}
 	}
 
 	public static FTPFile getFTPFile(FTPClient ftpClient, String ftpDir, String fileName) throws IOException {
+		
+		// 参数检查
+		Assert.notNull(ftpDir, "The ftpDir must not be null.");
+		Assert.notNull(fileName, "The fileName must not be null.");
+		
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
 		// 切换目录至根目录
 		ftpClient.changeWorkingDirectory(rootDir);
 		try {
 			
-			ftpClient.listFiles(ftpDir, new NameFileFilter(fileName));
+			// 尝试从目录中获取文件
+			FTPFile[] files = ftpClient.listFiles(ftpDir, new NameFileFilter(fileName));
+			if(files != null && files.length > 0) {
+				return files[0];
+			}
 			
-			
-			// 切换目录
-			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
+			// 没能获取到，尝试进行目录切换
+			boolean hasChanged = changeDirectory(ftpClient, ftpDir);
 			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
 			
-			ftpClient.listFiles(ftpDir, new NameFileFilter(fileName));
-			
-			
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
-			return FTPClientUtils.getFTPFile(ftpClient, fileName);
+			files = ftpClient.listFiles();
+			NameFileFilter filter  = new NameFileFilter(fileName);
+			if(files != null && files.length > 0) {
+				for (FTPFile ftpFile : files) {
+					if(filter.accept(ftpFile)) {
+						return ftpFile;
+					}
+				}
+			}
+			return null;
 		} finally {
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
@@ -427,8 +469,6 @@ public class FTPClientUtils {
 			// 切换目录
 			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
 			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
 			// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
 			FTPFile[] files = ftpClient.listFiles();
 			if (files != null && files.length > 0) {
@@ -464,8 +504,6 @@ public class FTPClientUtils {
 			// 切换目录
 			boolean hasChanged = changeDirectory(ftpClient, ftpDir);
 			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
 			// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
 			Collection<FTPFile> files = FTPFileUtils.listFiles(ftpClient.listFiles(), extensions);
 			if (files != null && files.size() > 0) {
@@ -497,9 +535,6 @@ public class FTPClientUtils {
 			// 切换目录
 			boolean hasChanged = changeDirectory(ftpClient, ftpDir);
 			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
-			
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasChanged, ftpDir);
 			// 发送 LIST 命令至 FTP 站点，使用系统默认的机制列出当前工作目录的文件信息
 			Collection<FTPFile> files = FTPFileUtils.listFiles(ftpClient.listFiles(), filter);
 			if (files != null && files.size() > 0) {
@@ -699,12 +734,29 @@ public class FTPClientUtils {
 	 * @throws IOException
 	 */
 	public static boolean deleteFile(FTPClient ftpClient, String[] fileNames) throws IOException {
-		for (String fileName : fileNames) {
-			// 删除 FTP 站点上的一个指定文件
-			boolean hasDel = ftpClient.deleteFile(fileName);
-			if (!hasDel) {
-				LOG.error("Can't Del file [" + fileName + "] from FTP server.");
+		
+		// 参数检查
+		Assert.notNull(fileNames, "The fileNames must not be null.");
+		// FTP服务根文件目录
+		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		try {
+			ftpClient.changeWorkingDirectory(rootDir);
+			// 尝试从目录中获取文件
+			FTPFile[] files = ftpClient.listFiles();
+			if(files != null && files.length > 0) {
+				NameFileFilter filter  = new NameFileFilter(fileNames);
+				for (FTPFile ftpFile : files) {
+					if(filter.accept(ftpFile)) {
+						// 删除 FTP 站点上的一个指定文件
+						if (ftpClient.deleteFile(ftpFile.getName())) {
+							LOG.info("Delete file [" + FTPStringUtils.getLocalName(ftpClient, ftpFile) + "]");
+						}
+					}
+				}
 			}
+		} finally {
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
 		}
 		return true;
 	}
@@ -718,22 +770,22 @@ public class FTPClientUtils {
 	 * @return
 	 * @throws IOException
 	 */
-	public static boolean deleteFile(FTPClient ftpClient, String ftpDir, String... fileNames) throws IOException {
+	public static boolean deleteFile(FTPClient ftpClient, String ftpDir, String[] fileNames) throws IOException {
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
 		try {
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
-			// 切换目录
-			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
-			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
-			
-			if( hasChanged ) {
-				for (String fileName : fileNames) {
-					// 删除 FTP 站点上的一个指定文件
-					boolean hasDel = ftpClient.deleteFile(fileName);
-					if (!hasDel) {
-						LOG.error("Can't Del file '" + fileName + "' from FTP server.");
+			// 转换目录为目标服务器目录格式
+			ftpDir = FTPPathUtils.getPath(ftpDir);
+			// 尝试从目录中获取文件
+			FTPFile[] files = ftpClient.listFiles(ftpDir, new NameFileFilter(fileNames));
+			if(files != null && files.length > 0) {
+				// 路径分割符
+				String separator = FTPConfigurationUtils.getFileSeparator(ftpClient.getClientConfig());
+				for (FTPFile ftpFile : files) {
+					if (ftpClient.deleteFile(ftpFile.getName())) {
+						LOG.info("Delete file [" + ftpDir + separator + FTPStringUtils.getLocalName(ftpClient, ftpFile) + "]");
 					}
 				}
 			}
@@ -744,55 +796,74 @@ public class FTPClientUtils {
 		return true;
 	}
 
-	public static boolean removeDirectory(FTPClient ftpClient, String ftpDir) throws IOException {
-		// 切换目录
-		boolean hasDir = FTPClientUtils.hasDirectory(ftpClient, ftpDir);
-		// 异常检查
-		FTPExceptionUtils.assertDir(hasDir, ftpDir);
-		// 切换到父级目录
+	
+	protected static void removeSubDirectory(FTPClient ftpClient, String ftpDir) throws IOException {
+		// 切换到指定目录
+		ftpClient.changeWorkingDirectory(ftpDir);
+		// 路径分割符
+		String separator = FTPConfigurationUtils.getFileSeparator(ftpClient.getClientConfig());
+		FTPFile[] ftpFileArr = ftpClient.listFiles();
+		for (FTPFile ftpFile : ftpFileArr) {
+			if (ftpFile.isDirectory()) {
+				String currtDir = ftpClient.printWorkingDirectory();
+				try {
+					removeSubDirectory(ftpClient, ftpFile.getName());
+					LOG.info("Delete subDir [" + ftpDir + separator + FTPStringUtils.getLocalName(ftpClient, ftpFile) + "]");
+				} finally {
+					ftpClient.changeWorkingDirectory(currtDir);
+				}
+			} else if (ftpFile.isFile()) {
+				if (ftpClient.deleteFile(ftpFile.getName())) {
+					LOG.info("Delete file [" + ftpDir + separator + FTPStringUtils.getLocalName(ftpClient, ftpFile) + "]");
+				}
+			} else if (ftpFile.isSymbolicLink()) {
+
+			} else if (ftpFile.isUnknown()) {
+
+			}
+		}
+		
 		ftpClient.changeToParentDirectory();
-		return ftpClient.removeDirectory(FTPStringUtils.getRemoteName(ftpClient, ftpDir));
+		ftpClient.removeDirectory(ftpDir);
 	}
 
 	// delete all subDirectory and files.
-	public static boolean removeDirectory(FTPClient ftpClient, String ftpDir, boolean isAll) throws IOException {
+	public static boolean removeDirectory(FTPClient ftpClient, String ftpDir) throws IOException {
 
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
-		// 切换目录至根目录
-		ftpClient.changeWorkingDirectory(rootDir);
 		try {
-			// 切换目录
-			boolean hasDir = FTPClientUtils.hasDirectory(ftpClient, ftpDir);
-			// 异常检查
-			FTPExceptionUtils.assertDir(hasDir, ftpDir);
+			// 切换目录至根目录
+			ftpClient.changeWorkingDirectory(rootDir);
 			// 转换目录为目标服务器目录格式
 			ftpDir = FTPPathUtils.getPath(ftpDir);
+			// 切换目录
+			boolean hasChanged = changeDirectory(ftpClient, ftpDir);
+			if(!hasChanged) {
+				// 不存在的目录视为删除成功
+				return true;
+			}
 			// 转码后的目录名称
 			String remoteDir = FTPStringUtils.getRemoteName(ftpClient, ftpDir);
-			if (!isAll) {
-				ftpClient.changeToParentDirectory();
-				// 异常检查
-				FTPExceptionUtils.assertRomve(ftpClient.removeDirectory(remoteDir), ftpDir);
-			}
-			FTPFile[] ftpFileArr = ftpClient.listFiles(remoteDir);
+			FTPFile[] ftpFileArr = ftpClient.listFiles();
+			// 如果目录是空的，可直接删除文件夹
 			if (ftpFileArr == null || ftpFileArr.length == 0) {
 				ftpClient.changeToParentDirectory();
 				return ftpClient.removeDirectory(remoteDir);
 			}
 			// 路径分割符
 			String separator = FTPConfigurationUtils.getFileSeparator(ftpClient.getClientConfig());
-			// 切换到指定目录
-			ftpClient.changeWorkingDirectory(remoteDir);
-			ftpClient.printWorkingDirectory();
 			for (FTPFile ftpFile : ftpFileArr) {
-				String fileName = FTPStringUtils.getLocalName(ftpClient, ftpFile);
 				if (ftpFile.isDirectory()) {
-					LOG.info("Delete subDir [" + ftpDir + separator + fileName + "]");
-					FTPClientUtils.removeDirectory(ftpClient, ftpDir + separator + fileName, true);
+					String currtDir = ftpClient.printWorkingDirectory();
+					try {
+						removeSubDirectory(ftpClient, ftpFile.getName());
+					} finally {
+						ftpClient.changeWorkingDirectory(currtDir);
+					}
 				} else if (ftpFile.isFile()) {
-					if (ftpClient.deleteFile(FTPStringUtils.getRemoteName(ftpClient, fileName))) {
-						LOG.info("Delete file [" + ftpDir + separator + fileName + "]");
+					if (ftpClient.deleteFile(ftpFile.getName())) {
+						LOG.info("Delete file [" + ftpDir + separator + FTPStringUtils.getLocalName(ftpClient, ftpFile) + "]");
 					}
 				} else if (ftpFile.isSymbolicLink()) {
 
@@ -800,6 +871,7 @@ public class FTPClientUtils {
 
 				}
 			}
+			ftpClient.changeToParentDirectory();
 			return ftpClient.removeDirectory(remoteDir);
 		} finally {
 			// 切换目录至根目录
@@ -1152,17 +1224,21 @@ public class FTPClientUtils {
 		
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		
+		OutputStream buffOutput = null;
 		try {
 			
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
 						
-			// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-			OutputStream buffOutput = IOUtils.toBufferedOutputStream(new FileOutputStream(localFile));
+			// 从服务器返回指定名称的文件并且写入到OuputStream（基于buffer）
+			buffOutput = IOUtils.toBufferedOutputStream(new FileOutputStream(localFile));
 			
 			return ftpClient.retrieveFile(fileName, buffOutput);
 				
 		} finally {
+			// 关闭输出
+			IOUtils.closeQuietly(buffOutput);
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
 		}
@@ -1187,20 +1263,24 @@ public class FTPClientUtils {
 		
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		OutputStream buffOutput = null;
 		try {
 			
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
+			ftpClient.printWorkingDirectory();
 			// 切换目录
 			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
 			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
 						
-			// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-			OutputStream buffOutput = IOUtils.toBufferedOutputStream(new FileOutputStream(localFile));
+			// 从服务器返回指定名称的文件并且写入到OuputStream（基于buffer）
+			buffOutput = IOUtils.toBufferedOutputStream(new FileOutputStream(localFile));
 			
 			return ftpClient.retrieveFile(fileName, buffOutput);
 				
 		} finally {
+			// 关闭输出
+			IOUtils.closeQuietly(buffOutput);
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
 		}
@@ -1405,7 +1485,7 @@ public class FTPClientUtils {
 	 * @return OutputStream {@link BufferedOutputStream} 对象
 	 * @throws IOException
 	 */
-	public static OutputStream retrieveToMem(FTPClient ftpClient, String ftpDir, String fileName) throws IOException {
+	public static byte[] retrieveToBytes(FTPClient ftpClient, String ftpDir, String fileName) throws IOException {
 		
 		// 参数检查
 		Assert.notNull(ftpDir, "The ftpDir must not be null.");
@@ -1413,6 +1493,8 @@ public class FTPClientUtils {
 		
 		// FTP服务根文件目录
 		String rootDir = FTPPathUtils.getRootDir(ftpClient.getClientConfig().getRootdir());
+		// 字节输出流
+		ByteArrayOutputStream byteOutput = null;
 		try {
 			
 			// 切换目录至根目录
@@ -1421,13 +1503,13 @@ public class FTPClientUtils {
 			boolean hasChanged = FTPClientUtils.changeDirectory(ftpClient, ftpDir);
 			Assert.isTrue(hasChanged, "Directory [ " + ftpDir + " ] was not found on FTP server.");
 			
-			// 带缓冲的输出流
-			OutputStream buffOutput = IOUtils.toBufferedOutputStream(new ByteArrayOutputStream(), ftpClient.getBufferSize());
+			byteOutput = new ByteArrayOutputStream();
 			// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-			ftpClient.retrieveFile(fileName, buffOutput);
-			
-			return buffOutput;
+			ftpClient.retrieveFile(fileName, byteOutput);
+			return byteOutput.toByteArray();
 		} finally {
+			// 关闭输出流
+			IOUtils.closeQuietly(byteOutput);
 			// 切换目录至根目录
 			ftpClient.changeWorkingDirectory(rootDir);
 		}
@@ -1442,18 +1524,23 @@ public class FTPClientUtils {
 	 * @return OutputStream {@link BufferedOutputStream} 对象
 	 * @throws IOException
 	 */
-	public static OutputStream retrieveToMem(FTPClient ftpClient, String fileName)
+	public static byte[] retrieveToBytes(FTPClient ftpClient, String fileName)
 			throws IOException {
 		
 		// 参数检查
 		Assert.notNull(fileName, "The fileName must not be null.");
 		
-		// 带缓冲的输出流
-		OutputStream buffOutput = IOUtils.toBufferedOutputStream(new ByteArrayOutputStream(), ftpClient.getBufferSize());
-		// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
-		ftpClient.retrieveFile(fileName, buffOutput);
-		
-		return buffOutput;
+		// 字节输出流
+		ByteArrayOutputStream byteOutput = null;
+		try {
+			byteOutput = new ByteArrayOutputStream();
+			// 从服务器返回指定名称的文件并且写入到OuputStream，以便写入到文件或其它地方（基于buffer）
+			ftpClient.retrieveFile(fileName, byteOutput);
+			return byteOutput.toByteArray();
+		} finally {
+			// 关闭输出流
+			IOUtils.closeQuietly(byteOutput);
+		}
 	}
 
 	/**
@@ -1585,6 +1672,7 @@ public class FTPClientUtils {
 	public static FTPStoreResult storeFile(FTPClient ftpClient, String ftpDir, File localFile) throws IOException {
 		
 		// 文件检查
+		Assert.notNull(ftpDir, "The ftpDir must not be null.");
 		Assert.isTrue(localFile.isFile(), "Local file [" + localFile.getPath() + "] not a file.");
 		Assert.isTrue(localFile.exists(), "Local file [" + localFile.getPath() + "] not exist.");
 	

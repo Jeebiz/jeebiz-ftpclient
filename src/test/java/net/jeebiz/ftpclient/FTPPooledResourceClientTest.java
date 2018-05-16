@@ -38,7 +38,7 @@ public class FTPPooledResourceClientTest extends FTPClientTest {
 		// ftp服务器密码
 		clientConfig.setPassword("123456");
 		// ftp服务器根路径
-		clientConfig.setRootdir("/u01/wwwroot/zftal-kod/data/Group/public/home/share/");
+		clientConfig.setRootdir("/");
 		
 		// 在主动模式下的外部IP地址
 		clientConfig.setActiveExternalHost("192.168.1.100");
@@ -60,8 +60,8 @@ public class FTPPooledResourceClientTest extends FTPClientTest {
 		clientConfig.setChannelWriteBufferSize(2 * 1024 * 1024);
 		// Socket使用的字符集;默认UTF-8
 		clientConfig.setCharset("GBK");
-		// 连接超时时间，单位为毫秒，默认30000毫秒
-		clientConfig.setConnectTimeout(30 * 1000);
+		// 连接超时时间，单位为毫秒，默认10000毫秒
+		clientConfig.setConnectTimeout(10 * 1000);
 		// 服务端编码格式;默认ISO-8859-1
 		clientConfig.setControlEncoding("ISO-8859-1");
 		// 控制保活消息回复等待时间,必须设置，防止长时间连接没响应，单位毫秒;默认1000毫秒；大多数FTP服务器不支持并发控制和数据连接使用
@@ -72,14 +72,14 @@ public class FTPPooledResourceClientTest extends FTPClientTest {
 		clientConfig.setCopyStreamListener(new PrintCopyStreamProcessListener());
 		clientConfig.setCopyStreamProcessListenerName("net.jeebiz.ftpclient.io.PrintCopyStreamProcessListener");
 		// 从数据连接读取数据的 超时时间，单位（毫秒）；默认 30000 毫秒
-		clientConfig.setDataTimeout(30 * 1000);
+		clientConfig.setDataTimeout(60 * 1000);
 		// 配置解析器用于解析文件时间戳的日期格式。 如果未指定，则此类解析器将用作默认值，这是en_US语言环境中使用的最常用格式。
 		clientConfig.setDefaultDateFormatStr("yyyy-MM-dd HH:mm:SSS");
 		// 文件格式：telnet,carriage_control,non_print
 		clientConfig.setFileFormat(FileFormatEnum.TELNET_TEXT);
 		// 文件重命名规则：默认 {@link UUIDFileRenamePolicy}
 		clientConfig.setFileRenamePolicy(new UUIDFileRenamePolicy());
-		clientConfig.setFileRenamePolicyName("net.jeebiz.ftpclient.bakup.UUIDFileRenamePolicy");
+		clientConfig.setFileRenamePolicyName("net.jeebiz.ftpclient.rename.UUIDFileRenamePolicy");
 		// 文件结构：file,record,page
 		clientConfig.setFileStructure(FileStructureEnum.FILE);
 		// 文件传输模式 ：stream,block,compressed
@@ -124,8 +124,9 @@ public class FTPPooledResourceClientTest extends FTPClientTest {
 		 *  大多数网络专家认为较优的TCP缓冲区大小是网络的两倍延迟(delay times)乘以带宽 buffer size = 2 * delay * bandwidth
 		 *  使用ping命令可以得到一次RTT时间，也就是2倍延迟，那么 buffer size = RTT * bandwidth
 		 *  继续上面例子，ping返回的值为80ms，所以TCP缓冲区大小应该为 0.08s * 100Mbps / 8 = 1MByte
+		 *  32kb
 		 */
-		clientConfig.setReceiveBufferSize(8 * 1024);
+		clientConfig.setReceiveBufferSize(32 * 1024);
 		// FTPClient接收数据的缓冲区大小,默认是8KB.
 		clientConfig.setReceiveDataSocketBufferSize(8 * 1024);
 		// 配置解析器用于解析文件最近修改时间戳的日期格式。 如果未指定，则此类解析器将用作默认值，这是en_US语言环境中使用的最常用格式。

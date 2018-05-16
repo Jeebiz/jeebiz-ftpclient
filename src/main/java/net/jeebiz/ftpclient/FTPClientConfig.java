@@ -27,8 +27,8 @@ import net.jeebiz.ftpclient.rename.UUIDFileRenamePolicy;
  */
 public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig {
 
-	/** 默认连接超时时间 ：30秒*/
-	public static final int DEFAULT_CONNECT_TIMEOUT = 30 * 1000;
+	/** 默认连接超时时间 ：10秒*/
+	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	/** 默认数据连接读取/发送数据超时时间 ：30秒*/
 	public static final int DEFAULT_DATA_TIMEOUT = 30 * 1000;
 	/** 默认socket超时时间 ：5秒 */
@@ -82,7 +82,7 @@ public class FTPClientConfig extends org.apache.commons.net.ftp.FTPClientConfig 
 	protected int channelWriteBufferSize = DEFAULT_CHANNEL_SIZE;
 	/** Socket使用的字符集;默认UTF-8 */
 	protected String charset = "UTF-8";
-	/** 连接超时时间，单位为秒，默认30秒 */
+	/** 连接超时时间，单位为秒，默认10秒 */
 	protected int connectTimeout = DEFAULT_CONNECT_TIMEOUT;
 	/** 服务端编码格式;默认ISO-8859-1 */
 	protected String controlEncoding = SERVER_CHARSET;

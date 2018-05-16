@@ -58,8 +58,6 @@ public class FTPChannelUtils extends FTPStreamUtils {
 					totalRead = totalRead + bytesRead;
 					listener.bytesTransferred(totalRead, bytesRead, CopyStreamEvent.UNKNOWN_STREAM_SIZE);
 				}
-				// 发送一个NOOP命令到FTP服务器。 这是为防止服务器超时有用，与 noop() 类似。防止连接超时，也可以根据返回值检查连接的状态。
-				ftpClient.sendNoOp();
 			}
 			return true;
 		} finally {

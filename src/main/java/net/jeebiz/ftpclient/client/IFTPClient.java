@@ -19,7 +19,7 @@ import net.jeebiz.ftpclient.utils.FTPStoreResult;
  */
 public interface IFTPClient {
 
-	public boolean makeRootDir(String targetDir) throws Exception;
+public boolean makeRootDir(String targetDir) throws Exception;
 	
 	public boolean makeDir(String parentDir,String targetDir) throws Exception;
 	
@@ -49,8 +49,6 @@ public interface IFTPClient {
 	
 	public boolean removeDir(String path) throws Exception;
 	
-	public boolean removeDir(String path,boolean isAll) throws Exception;
-	
 	public boolean remove(String ftpFileName) throws Exception;
 	
 	public boolean remove(String[] ftpFiles) throws Exception;
@@ -62,9 +60,9 @@ public interface IFTPClient {
 	public String[] listNames(String ftpDir) throws Exception;
 	
 	public List<FTPFile> listFiles(String ftpDir) throws Exception;
-	
+
 	public List<FTPFile> listFiles(String ftpDir, String[] extensions) throws Exception;
-	
+		
 	public List<FTPFile> listFiles(String ftpDir, String[] extensions,boolean recursion) throws Exception;
 	
 	public List<FTPFile> listFiles(String ftpDir, FTPFileFilter filter) throws Exception;
@@ -83,29 +81,30 @@ public interface IFTPClient {
 	
 	public FTPStoreResult upload(byte[] bytes,String ftpDir,String ftpFileName) throws Exception;
 	
-	public FTPStoreResult upload(File localFile,String ftpFileName) throws Exception;
+	public FTPStoreResult upload(File localFile) throws Exception;
 	
-	public FTPStoreResult upload(File localFile,String ftpDir,String ftpFileName) throws Exception;
+	public FTPStoreResult upload(File localFile,String ftpDir) throws Exception;
 	
 	public FTPStoreResult upload(InputStream input,String ftpFileName) throws Exception;
 	
 	public FTPStoreResult upload(InputStream input,String ftpDir,String ftpFileName) throws Exception;
 	
-	public FTPStoreResult upload(String localFile,String ftpFileName) throws Exception;
+	public FTPStoreResult upload(String localFile) throws Exception;
 	
-	public FTPStoreResult upload(String localFile,String ftpDir,String ftpFileName) throws Exception;
+	public FTPStoreResult upload(String localFile,String ftpDir) throws Exception;
 	
 	public FTPStoreResult upload(StringBuilder fileContent,String ftpFileName) throws Exception;
 	
 	public FTPStoreResult upload(StringBuilder fileContent,String ftpDir,String ftpFileName) throws Exception;
 	
-	public FTPStoreResult uploadByChannel(File localFile,String ftpFileName) throws Exception;
+	public FTPStoreResult uploadByChannel(File localFile) throws Exception;
 	
-	public FTPStoreResult uploadByChannel(File localFile,String ftpDir,String ftpFileName) throws Exception;
+	public FTPStoreResult uploadByChannel(File localFile,String ftpDir) throws Exception;
 	
 	public void sendCommand(String args) throws Exception;
 	
 	public FTPClient getFTPClient() throws Exception;
 	
 	public void releaseClient(FTPClient ftpClient) throws Exception;
+	
 }

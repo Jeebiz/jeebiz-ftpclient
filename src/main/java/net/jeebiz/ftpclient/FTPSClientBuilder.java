@@ -19,6 +19,7 @@ public class FTPSClientBuilder extends FTPClientBuilder {
 	public FTPSClient build() {
 		//加密的FTPSClient
 		FTPSClient ftpsClient = new FTPSClient(clientConfig.isImplicit());
+		ftpsClient.setClientConfig(getClientConfig());
 		//初始化FTPSClient
 		return FTPClientUtils.initFTPSClient(FTPClientUtils.initFTPClient(ftpsClient, clientConfig), clientConfig);
 	}

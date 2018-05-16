@@ -25,6 +25,7 @@ public class FTPHttpClientBuilder extends FTPClientBuilder {
 		}else{
 			ftpHttpClient = new FTPHTTPClient(clientConfig.getHttpProxyHost(),clientConfig.getHttpProxyPort(),clientConfig.getHttpProxyUsername(),clientConfig.getHttpProxyPassword());
 		}
+		ftpHttpClient.setClientConfig(getClientConfig());
 		//初始化FTPHTTPClient
 		return FTPClientUtils.initFTPClient(ftpHttpClient, clientConfig);
 	}

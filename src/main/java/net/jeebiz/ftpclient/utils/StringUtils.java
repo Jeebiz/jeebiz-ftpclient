@@ -29,12 +29,7 @@ public abstract class StringUtils extends org.apache.commons.lang3.StringUtils {
 	public static String CONFIG_LOCATION_DELIMITERS = ",; \t\n";
 	
 	/**
-	 * 
-	 * @description	：获得以 ",; \t\n"分割的字符数组
-	 * @author 		： <a href="mailto:hnxyhcwdl1003@163.com">wandalong</a>
-	 * @date 		：Dec 17, 2015 9:07:47 PM
-	 * @param str
-	 * @return
+	 * 获得以 ",; \t\n"分割的字符数组
 	 */
 	public static String[] tokenizeToStringArray(String str) {
 		return tokenizeToStringArray(str, CONFIG_LOCATION_DELIMITERS, true, true);

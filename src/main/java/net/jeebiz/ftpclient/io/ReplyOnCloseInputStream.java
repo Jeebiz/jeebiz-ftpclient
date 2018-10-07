@@ -43,8 +43,6 @@ public class ReplyOnCloseInputStream extends InputStream {
 	 *	但是FTP Server只有在接受到InputStream执行close方法时，才会返回。所以先要执行close方法
 	 *
 	 * </pre> 
-	 * @author 		： <a href="mailto:hnxyhcwdl1003@163.com">wandalong</a>
-	 * @date 		：Jan 13, 2016 11:15:43 AM
 	 */
 	@Override
 	public void close() throws IOException {

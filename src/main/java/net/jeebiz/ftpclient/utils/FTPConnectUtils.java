@@ -215,12 +215,7 @@ public class FTPConnectUtils {
 	}
 
 	/**
-	 * 
-	 * @description ： 验证FTPClient连接的有效性
-	 * @author ： <a href="mailto:hnxyhcwdl1003@163.com">wandalong</a>
-	 * @date ：Jan 12, 2016 9:06:01 AM
-	 * @param ftpClient
-	 * @return
+	 * 验证FTPClient连接的有效性
 	 */
 	public static boolean validateConnect(FTPClient ftpClient) {
 		if (ftpClient != null) {

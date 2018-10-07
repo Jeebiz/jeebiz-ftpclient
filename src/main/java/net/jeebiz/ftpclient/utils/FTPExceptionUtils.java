@@ -121,17 +121,6 @@ public class FTPExceptionUtils {
         }
 	}
 	
-	/**
-	 * 
-	 *@描述		：直接输出纯Text.
-	 *@创建人	: wandalong
-	 *@创建时间	: Jun 2, 20169:28:33 AM
-	 *@param response
-	 *@param text
-	 *@修改人	: 
-	 *@修改时间	: 
-	 *@修改描述	:
-	 */
 	public static void renderException(HttpServletResponse response, String text) {
 		PrintWriter out = null;
 		try {

@@ -1,6 +1,7 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	
+
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.jeebiz</groupId>
 	<artifactId>jeebiz-ftpclient</artifactId>
@@ -370,15 +371,15 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<commons-beanutils.version>1.9.3</commons-beanutils.version>
-		<commons-io.version>2.5</commons-io.version>
+		<commons-io.version>2.6</commons-io.version>
 		<commons-lang3.version>3.7</commons-lang3.version>
 		<commons-net.version>3.6</commons-net.version>
-		<commons-pool2.version>2.5.0</commons-pool2.version>
+		<commons-pool2.version>2.7.0</commons-pool2.version>
 		<contiperf.version>2.3.4</contiperf.version>
 		<java.version>1.7</java.version>
 		<junit.version>4.11</junit.version>
 		<slf4j.version>1.7.25</slf4j.version>
-		<javax.servlet-api.version>3.1.0</javax.servlet-api.version> 
+		<javax.servlet-api.version>3.1.0</javax.servlet-api.version>
 		<maven.version>3.0</maven.version>
 		<maven-clean-plugin.version>3.0.0</maven-clean-plugin.version>
 		<maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
@@ -409,11 +410,11 @@
 				<version>${junit.version}</version>
 			</dependency>
 			<dependency>
-			<groupId>org.databene</groupId>
+				<groupId>org.databene</groupId>
 				<artifactId>contiperf</artifactId>
 				<version>${contiperf.version}</version>
 			</dependency>
-			
+
 			<!-- https://mvnrepository.com/artifact/org.slf4j -->
 			<dependency>
 				<groupId>org.slf4j</groupId>
@@ -421,55 +422,55 @@
 				<version>${slf4j.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.slf4j</groupId>
-			    <artifactId>slf4j-simple</artifactId>
-			    <version>${slf4j.version}</version>
-			    <scope>test</scope>
+				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-simple</artifactId>
+				<version>${slf4j.version}</version>
+				<scope>test</scope>
 			</dependency>
-			
+
 			<!-- https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api -->
 			<dependency>
-			    <groupId>javax.servlet</groupId>
-			    <artifactId>javax.servlet-api</artifactId>
-			    <version>${javax.servlet-api.version}</version>
-			    <scope>provided</scope>
+				<groupId>javax.servlet</groupId>
+				<artifactId>javax.servlet-api</artifactId>
+				<version>${javax.servlet-api.version}</version>
+				<scope>provided</scope>
 			</dependency>
-		
+
 			<!-- https://mvnrepository.com/artifact/commons-beanutils/commons-beanutils -->
 			<dependency>
-			    <groupId>commons-beanutils</groupId>
-			    <artifactId>commons-beanutils</artifactId>
-			    <version>${commons-beanutils.version}</version>
+				<groupId>commons-beanutils</groupId>
+				<artifactId>commons-beanutils</artifactId>
+				<version>${commons-beanutils.version}</version>
 			</dependency>
-			
+
 			<!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
 			<dependency>
-			    <groupId>commons-io</groupId>
-			    <artifactId>commons-io</artifactId>
-			    <version>${commons-io.version}</version>
+				<groupId>commons-io</groupId>
+				<artifactId>commons-io</artifactId>
+				<version>${commons-io.version}</version>
 			</dependency>
-			
+
 			<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
 			<dependency>
-			    <groupId>org.apache.commons</groupId>
-			    <artifactId>commons-lang3</artifactId>
-			    <version>${commons-lang3.version}</version>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-lang3</artifactId>
+				<version>${commons-lang3.version}</version>
 			</dependency>
-			
+
 			<!-- https://mvnrepository.com/artifact/commons-net/commons-net -->
 			<dependency>
-			    <groupId>commons-net</groupId>
-			    <artifactId>commons-net</artifactId>
-			    <version>${commons-net.version}</version>
+				<groupId>commons-net</groupId>
+				<artifactId>commons-net</artifactId>
+				<version>${commons-net.version}</version>
 			</dependency>
-			
+
 			<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-pool2 -->
 			<dependency>
-			    <groupId>org.apache.commons</groupId>
-			    <artifactId>commons-pool2</artifactId>
-			    <version>${commons-pool2.version}</version>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-pool2</artifactId>
+				<version>${commons-pool2.version}</version>
 			</dependency>
-		
+
 			<!-- Metrics is a Java library which gives you unparalleled insight into 
 				what your code does in production. Metrics provides a powerful toolkit of 
 				ways to measure the behavior of critical components in your production environment. -->
@@ -478,7 +479,7 @@
 				<artifactId>metrics-core</artifactId>
 				<version>${metrics.version}</version>
 			</dependency>
-			
+
 		</dependencies>
 	</dependencyManagement>
 
@@ -499,27 +500,27 @@
 			<artifactId>slf4j-api</artifactId>
 		</dependency>
 		<dependency>
-		    <groupId>org.slf4j</groupId>
-		    <artifactId>slf4j-simple</artifactId>
-		    <scope>test</scope>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<scope>test</scope>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 		</dependency>
 		<dependency>
-		    <groupId>org.apache.commons</groupId>
-		    <artifactId>commons-lang3</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
 		</dependency>
 		<dependency>
-		    <groupId>commons-net</groupId>
-		    <artifactId>commons-net</artifactId>
+			<groupId>commons-net</groupId>
+			<artifactId>commons-net</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -529,7 +530,7 @@
 			<groupId>io.dropwizard.metrics</groupId>
 			<artifactId>metrics-core</artifactId>
 		</dependency>
-			
+
 	</dependencies>
 
 </project>

@@ -11,13 +11,6 @@
 	<url>https://github.com/Jeebiz/${project.artifactId}</url>
 	<packaging>jar</packaging>
 
-	<licenses>
-		<license>
-			<name>The Apache Software License, Version 2.0</name>
-			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-		</license>
-	</licenses>
-
 	<scm>
 		<connection>scm:git:https:github.com/Jeebiz/${project.artifactId}.git</connection>
 		<developerConnection>scm:git:https:github.com/Jeebiz/${project.artifactId}.git</developerConnection>
@@ -25,13 +18,31 @@
 		<tag>${project.artifactId}</tag>
 	</scm>
 
+	<!--开源协议采用Apache 2.0协议-->
+	<licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+	<!-- 组织信息 -->
+	<organization>
+		<name>Jeebiz</name>
+		<url>www.jeebiz.net</url>
+	</organization>
+  	
+	<!-- 开发者信息 -->
 	<developers>
 		<developer>
-			<name>vindell</name>
+			<name>wandl</name>
 			<email>hnxyhcwdl1003@163.com</email>
+			<organization>jeebiz</organization>
+      		<organizationUrl>http://www.jeebiz.net</organizationUrl>
 			<roles>
-				<role>developer</role>
-			</roles>
+	            <role>developer</role>
+	        </roles>
 			<timezone>+8</timezone>
 		</developer>
 	</developers>
